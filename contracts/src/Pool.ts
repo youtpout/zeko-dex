@@ -74,6 +74,7 @@ export class Pool extends TokenContract {
       simpleToken1.deriveTokenId()
     );
 
+    // the amount need to be pretransfer to prevent from too much accoun update
     let _amount0 = update0.account.balance.get();
     let _amount1 = update1.account.balance.get();
 
@@ -94,6 +95,8 @@ export class Pool extends TokenContract {
 
     let liquidityField = field0.mul(field1).sqrt().sub(minimunLiquidity);
     liquidityField.assertGreaterThan(0, "Insufficient liquidity for minimun liquidity");
+    liquidityField.assertLessThanOrEqual(UInt64.MAXINT().value, "Too much liquidity");
+
     liquidity = UInt64.Unsafe.fromField(field0);
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
