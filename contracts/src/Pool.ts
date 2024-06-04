@@ -1,4 +1,5 @@
 import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest } from 'o1js';
+import { Prover } from 'o1js/dist/node/lib/proof-system/zkprogram';
 import { add } from 'o1js/dist/node/lib/provable/gadgets/native-curve';
 
 
@@ -12,7 +13,7 @@ export class PoolState extends Struct({
 }
 
 // minimum liquidity permanently blocked in the pool
-const minimunLiquidity = 10 ** 3;
+export const minimunLiquidity = 10 ** 3;
 
 export class SimpleToken extends TokenContract {
   init() {
@@ -75,11 +76,11 @@ export class Pool extends TokenContract {
     );
 
     // the amount need to be pretransfer to prevent from too much accoun update
-    let _amount0 = update0.account.balance.get();
-    let _amount1 = update1.account.balance.get();
+    let amount0 = update0.account.balance.get();
+    let amount1 = update1.account.balance.get();
 
-    _amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
-    _amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
+    amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
+    amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
 
     _poolState.init = Bool(true);
     this.token0.set(_token0);
@@ -90,14 +91,14 @@ export class Pool extends TokenContract {
     let liquidity = UInt64.zero;
 
     // use field for sqrt
-    let field0 = new Field(_amount0.value);
-    let field1 = new Field(_amount1.value);
+    let field0 = new Field(amount0.value);
+    let field1 = new Field(amount1.value);
 
     let liquidityField = field0.mul(field1).sqrt().sub(minimunLiquidity);
     liquidityField.assertGreaterThan(0, "Insufficient liquidity for minimun liquidity");
     liquidityField.assertLessThanOrEqual(UInt64.MAXINT().value, "Too much liquidity");
 
-    liquidity = UInt64.Unsafe.fromField(field0);
+    liquidity = UInt64.Unsafe.fromField(liquidityField);
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
     // mint minimun to address 0
@@ -108,8 +109,8 @@ export class Pool extends TokenContract {
     this.internal.mint({ address: senderPublicKey, amount: liquidity });
     _poolState.totalSupply.add(liquidity);
 
-    _poolState.reserve0.add(_amount0);
-    _poolState.reserve1.add(_amount1);
+    _poolState.reserve0.add(amount0);
+    _poolState.reserve1.add(amount1);
 
     this.poolState.set(_poolState);
 

@@ -1,6 +1,6 @@
 import { Account, AccountUpdate, Bool, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { Factory } from './Factory';
-import { Pool, SimpleToken } from './Pool';
+import { Pool, SimpleToken, minimunLiquidity } from './Pool';
 
 
 /*
@@ -101,6 +101,11 @@ describe('Pool', () => {
 
     const poolState = zkApp.poolState.get();
     expect(poolState.init).toEqual(Bool(true));
+
+    const liquidityUser = Mina.getBalance(senderAccount, zkApp.deriveTokenId());
+    const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);
+    console.log("balance liquidity user", liquidityUser.toString());
+    expect(liquidityUser.value).toEqual(expected);
   });
 
   async function mintToken() {
