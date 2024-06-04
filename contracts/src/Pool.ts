@@ -1,4 +1,4 @@
-import { Field, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest } from 'o1js';
+import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest } from 'o1js';
 import { add } from 'o1js/dist/node/lib/provable/gadgets/native-curve';
 
 
@@ -17,10 +17,23 @@ const minimunLiquidity = 10 ** 3;
 export class SimpleToken extends TokenContract {
   init() {
     super.init();
+
+    // make account non-upgradable forever
+    this.account.permissions.set({
+      ...Permissions.default(),
+      setVerificationKey:
+        Permissions.VerificationKey.impossibleDuringCurrentVersion(),
+      setPermissions: Permissions.impossible(),
+      access: Permissions.proofOrSignature(),
+    });
   }
 
   @method async approveBase(forest: AccountUpdateForest) {
     this.checkZeroBalanceChange(forest);
+  }
+
+  @method async mintTo(to: PublicKey, amount: UInt64) {
+    this.internal.mint({ address: to, amount });
   }
 }
 
@@ -56,20 +69,21 @@ export class Pool extends TokenContract {
     this.token0.set(_token0);
     this.token1.set(_token1);
 
+    // unconstrained because transfer() requires the signature anyway
     let senderPublicKey = this.sender.getUnconstrained();
-    let senderUpdate = AccountUpdate.createSigned(senderPublicKey);
+
     // senderUpdate.send({ to: this, amount: _amount0 });
     let simpleToken0 = new SimpleToken(_token0);
-    simpleToken0.transfer(senderUpdate, this.address, _amount0);
+    await simpleToken0.transfer(senderPublicKey, this.address, _amount0);
 
     let simpleToken1 = new SimpleToken(_token1);
-    simpleToken1.transfer(senderUpdate, this.address, _amount1);
+    //await simpleToken1.transfer(senderPublicKey, this.address, _amount1);
 
     let liquidity = UInt64.zero;
 
     // use field for sqrt
-    let field0 = new Field(_amount0.toBigInt());
-    let field1 = new Field(_amount1.toBigInt());
+    let field0 = new Field(_amount0.value);
+    let field1 = new Field(_amount1.value);
 
     let liquidityField = field0.mul(field1).sqrt().sub(minimunLiquidity);
     liquidityField.assertGreaterThan(0, "Insufficient liquidity for minimun liquidity");
@@ -77,7 +91,7 @@ export class Pool extends TokenContract {
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
     // mint minimun to address 0
-    this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
+    //this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
     _poolState.totalSupply.add(minimunLiquidity);
 
     // mint to user
