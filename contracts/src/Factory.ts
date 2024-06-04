@@ -38,7 +38,8 @@ export class Factory extends SmartContract {
         const update = AccountUpdate.createSigned(poolAddress, this.tokenId);
         update.body.update.verificationKey = { isSome: Bool(true), value: _vk };
 
-        let liquidity = pool.create(_token0, _token1, _amount0, _amount1);
+        // todo transfer to pool token
+        let liquidity = pool.create(_token0, _token1);
 
         return liquidity;
     }

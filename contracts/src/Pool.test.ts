@@ -82,12 +82,20 @@ describe('Pool', () => {
     const balanceMina = Mina.getBalance(senderAccount);
     console.log("balance mina user", balanceMina.toString());
 
+    const txn0 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 2);
+      await zkToken0.transfer(senderAccount, zkAppAddress, amt);
+      await zkToken1.transfer(senderAccount, zkAppAddress, amt);
+    });
+    await txn0.prove();
+    await txn0.sign([senderKey]).send();
 
     // create pool
     const txn = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 2);
-      await zkApp.create(zkToken0Address, zkToken1Address, amt, amt);
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkApp.create(zkToken0Address, zkToken1Address);
     });
+    console.log(txn.toPretty());
     await txn.prove();
     await txn.sign([senderKey]).send();
 
