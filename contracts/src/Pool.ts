@@ -42,7 +42,7 @@ export class Pool extends TokenContract {
   }
 
   @method.returns(UInt64)
-  async createPair(_token0: PublicKey, _token1: PublicKey, _amount0: UInt64, _amount1: UInt64) {
+  async create(_token0: PublicKey, _token1: PublicKey, _amount0: UInt64, _amount1: UInt64) {
     _token0.equals(_token1).assertFalse("Identical token");
     _amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
     _amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
