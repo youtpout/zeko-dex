@@ -2,22 +2,8 @@ import { Field, SmartContract, state, State, method, Struct, UInt64, PublicKey, 
 import { Pool } from './Pool';
 
 
-export class PoolState extends Struct({
-    reserve0: UInt64,
-    reserve1: UInt64,
-    totalSupply: UInt64,
-    init: Bool
-}) {
-
-}
-
-// minimum liquidity permanently blocked in the pool
-const minimunLiquidity = 10 ** 3;
-//const poolCompile = await Pool.compile();
-
-
 /**
- * Pool contract who holds token
+ * Factory who list pools
  */
 export class Factory extends SmartContract {
     @state(Field) numberPool = State<Field>();
