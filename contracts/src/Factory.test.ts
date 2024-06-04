@@ -1,4 +1,4 @@
-import { AccountUpdate, Field, Mina, PrivateKey, PublicKey } from 'o1js';
+import { AccountUpdate, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { Factory } from './Factory';
 import { Pool, SimpleToken } from './Pool';
 
@@ -69,23 +69,38 @@ describe('Add', () => {
     expect(num).toEqual(Field(0));
   });
 
-  it('get verification key', async () => {
-    /* const pool = await Pool.compile();
-     console.log((await pool).verificationKey);*/
+
+
+  it('deploy pool', async () => {
+    await localDeploy();
+
+    const pool = await Pool.compile();
+
+    return;
+
+    // update transaction
+    const txn = await Mina.transaction(senderAccount, async () => {
+      await zkApp.createPool(pool.verificationKey, zkToken0Address, zkToken1Address);
+    });
+    await txn.prove();
+    await txn.sign([senderKey]).send();
   });
 
+  async function mintToken() {
+    // update transaction
+    const txn = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkToken0.mintTo(senderAccount, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn.prove();
+    await txn.sign([senderKey, zkToken0PrivateKey]).send();
 
-  // it('correctly updates the num state on the `Add` smart contract', async () => {
-  //   await localDeploy();
+    const txn2 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkToken1.mintTo(senderAccount, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn2.prove();
+    await txn2.sign([senderKey, zkToken1PrivateKey]).send();
+  }
 
-  //   // update transaction
-  //   const txn = await Mina.transaction(senderAccount, async () => {
-  //     await zkApp.update();
-  //   });
-  //   await txn.prove();
-  //   await txn.sign([senderKey]).send();
-
-  //   const updatedNum = zkApp.num.get();
-  //   expect(updatedNum).toEqual(Field(3));
-  // });
 });

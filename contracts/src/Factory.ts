@@ -27,7 +27,7 @@ export class Factory extends SmartContract {
     }
 
     @method.returns(UInt64)
-    async createPool(_vk: VerificationKey, _token0: PublicKey, _token1: PublicKey, _amount0: UInt64, _amount1: UInt64) {
+    async createPool(_vk: VerificationKey, _token0: PublicKey, _token1: PublicKey) {
         let hashPool = Poseidon.hash(_token0.toFields().concat(_token1.toFields()));
         let poolAddress = PublicKey.fromFields(hashPool.toFields());
 
