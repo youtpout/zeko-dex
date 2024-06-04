@@ -1,5 +1,6 @@
-import { Account, AccountUpdate, Bool, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
-import { Pool, SimpleToken, minimunLiquidity } from './Pool';
+import { AccountUpdate, Bool, Field, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
+import { PoolList } from './PoolList';
+import { Pool, SimpleToken } from './Pool';
 
 
 /*
@@ -11,14 +12,14 @@ import { Pool, SimpleToken, minimunLiquidity } from './Pool';
 
 let proofsEnabled = false;
 
-describe('Pool', () => {
+describe('Add', () => {
   let deployerAccount: Mina.TestPublicKey,
     deployerKey: PrivateKey,
     senderAccount: Mina.TestPublicKey,
     senderKey: PrivateKey,
     zkAppAddress: PublicKey,
     zkAppPrivateKey: PrivateKey,
-    zkApp: Pool,
+    zkApp: PoolList,
     zkToken0Address: PublicKey,
     zkToken0PrivateKey: PrivateKey,
     zkToken0: SimpleToken,
@@ -27,10 +28,7 @@ describe('Pool', () => {
     zkToken1: SimpleToken;
 
   beforeAll(async () => {
-    if (proofsEnabled) {
-      await SimpleToken.compile();
-      await Pool.compile();
-    }
+    if (proofsEnabled) await PoolList.compile();
   });
 
   beforeEach(async () => {
@@ -42,7 +40,7 @@ describe('Pool', () => {
 
     zkAppPrivateKey = PrivateKey.random();
     zkAppAddress = zkAppPrivateKey.toPublicKey();
-    zkApp = new Pool(zkAppAddress);
+    zkApp = new PoolList(zkAppAddress);
 
     zkToken0PrivateKey = PrivateKey.random();
     zkToken0Address = zkToken0PrivateKey.toPublicKey();
@@ -67,50 +65,30 @@ describe('Pool', () => {
 
   it('generates and deploys the `Add` smart contract', async () => {
     await localDeploy();
-    const num = zkApp.token0.get();
-    expect(num).toEqual(PublicKey.empty());
-
-    const compile = await Pool.compile();
-    console.log("pool vk hash", compile.verificationKey.hash);
+    const num = zkApp.numberPool.get();
+    expect(num).toEqual(Field(0));
   });
 
-  it('create a pool', async () => {
 
+
+  it('deploy pool', async () => {
     await localDeploy();
-    let amt = UInt64.from(10 * 10 ** 9);
 
-    await mintToken();
+    const pool = await Pool.compile();
 
-    const balance = Mina.getBalance(senderAccount, zkToken0.deriveTokenId());
-    console.log("balance user", balance.toString());
+    let hashPool = Poseidon.hash(zkToken0Address.toFields().concat(zkToken1Address.toFields()));
+    let poolAddress = PublicKey.from({ x: hashPool, isOdd: Bool(false) });
+    await fetchAccount({ publicKey: poolAddress });
 
-    const balanceMina = Mina.getBalance(senderAccount);
-    console.log("balance mina user", balanceMina.toString());
-
-    const txn0 = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 2);
-      await zkToken0.transfer(senderAccount, zkAppAddress, amt);
-      await zkToken1.transfer(senderAccount, zkAppAddress, amt);
-    });
-    await txn0.prove();
-    await txn0.sign([senderKey]).send();
-
-    // create pool
+    // update transaction
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkApp.create(zkToken0Address, zkToken1Address);
+      // const address = await zkApp.createPool(pool.verificationKey, zkToken0Address, zkToken1Address);
     });
-    console.log(txn.toPretty());
     await txn.prove();
-    await txn.sign([senderKey]).send();
 
-    const poolState = zkApp.poolState.get();
-    expect(poolState.init).toEqual(Bool(true));
-
-    const liquidityUser = Mina.getBalance(senderAccount, zkApp.deriveTokenId());
-    const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);
-    console.log("balance liquidity user", liquidityUser.toString());
-    expect(liquidityUser.value).toEqual(expected);
+    console.log(txn.toPretty());
+    await txn.sign([senderKey, zkAppPrivateKey]).send();
   });
 
   async function mintToken() {
@@ -130,18 +108,4 @@ describe('Pool', () => {
     await txn2.sign([senderKey, zkToken1PrivateKey]).send();
   }
 
-
-  // it('correctly updates the num state on the `Add` smart contract', async () => {
-  //   await localDeploy();
-
-  //   // update transaction
-  //   const txn = await Mina.transaction(senderAccount, async () => {
-  //     await zkApp.update();
-  //   });
-  //   await txn.prove();
-  //   await txn.sign([senderKey]).send();
-
-  //   const updatedNum = zkApp.num.get();
-  //   expect(updatedNum).toEqual(Field(3));
-  // });
 });
