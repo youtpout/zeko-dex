@@ -10,7 +10,7 @@ import { Pool, SimpleToken, minimunLiquidity } from './Pool';
  * See https://docs.minaprotocol.com/zkapps for more info.
  */
 
-let proofsEnabled = false;
+let proofsEnabled = true;
 
 describe('Pool', () => {
   let deployerAccount: Mina.TestPublicKey,
@@ -28,7 +28,10 @@ describe('Pool', () => {
     zkToken1: SimpleToken;
 
   beforeAll(async () => {
-    if (proofsEnabled) await Factory.compile();
+    if (proofsEnabled) {
+      await SimpleToken.compile();
+      await Pool.compile();
+    }
   });
 
   beforeEach(async () => {
