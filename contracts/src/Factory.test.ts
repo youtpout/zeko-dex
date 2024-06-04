@@ -1,4 +1,4 @@
-import { AccountUpdate, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
+import { AccountUpdate, Bool, Field, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import { Factory } from './Factory';
 import { Pool, SimpleToken } from './Pool';
 
@@ -76,14 +76,21 @@ describe('Add', () => {
 
     const pool = await Pool.compile();
 
-    return;
+    let hashPool = Poseidon.hash(zkToken0Address.toFields().concat(zkToken1Address.toFields()));
+    let poolAddress = PublicKey.from({ x: hashPool, isOdd: Bool(false) });
+    await fetchAccount({ publicKey: poolAddress });
 
     // update transaction
     const txn = await Mina.transaction(senderAccount, async () => {
-      await zkApp.createPool(pool.verificationKey, zkToken0Address, zkToken1Address);
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      const address = await zkApp.createPool(pool.verificationKey, zkToken0Address, zkToken1Address);
+      console.log("pool address", address.toBase58());
+      console.log("factory address", zkAppAddress.toBase58());
     });
     await txn.prove();
-    await txn.sign([senderKey]).send();
+
+    console.log(txn.toPretty());
+    await txn.sign([senderKey, zkAppPrivateKey]).send();
   });
 
   async function mintToken() {

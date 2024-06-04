@@ -65,6 +65,7 @@ export class Pool extends TokenContract {
     let simpleToken0 = new SimpleToken(_token0);
     let simpleToken1 = new SimpleToken(_token1);
 
+
     let update0 = new SimpleToken(
       this.address,
       simpleToken0.deriveTokenId()
@@ -117,6 +118,7 @@ export class Pool extends TokenContract {
     return liquidity;
   }
 
+  /*
   @method.returns(UInt64)
   async mintLiquidity(_amount0: UInt64, _amount1: UInt64) {
     let _poolState = this.poolState.getAndRequireEquals();
@@ -147,7 +149,7 @@ export class Pool extends TokenContract {
 
 
     return liquidity;
-  }
+  }*/
 
 
 }

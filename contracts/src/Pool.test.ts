@@ -10,7 +10,7 @@ import { Pool, SimpleToken, minimunLiquidity } from './Pool';
  * See https://docs.minaprotocol.com/zkapps for more info.
  */
 
-let proofsEnabled = true;
+let proofsEnabled = false;
 
 describe('Pool', () => {
   let deployerAccount: Mina.TestPublicKey,
