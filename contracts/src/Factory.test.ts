@@ -1,6 +1,6 @@
-import { AccountUpdate, Bool, Field, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
-import { Factory } from './Factory';
-import { Pool, SimpleToken } from './Pool';
+import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
+import { Factory, Pair } from './Factory';
+import { Pool, SimpleToken, minimunLiquidity } from './Pool';
 
 
 /*
@@ -71,27 +71,80 @@ describe('Add', () => {
 
 
 
-  it('deploy pool', async () => {
+  it('deploy a pool', async () => {
+
     await localDeploy();
+    let amt = UInt64.from(10 * 10 ** 9);
 
-    const pool = await Pool.compile();
+    const newAccount = PrivateKey.random();
+    let newAddress = PublicKey.empty();
+    // register pool
+    const txn00 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken0Address, zkToken1Address);
+    });
+    await txn00.prove();
+    await txn00.sign([senderKey, newAccount]).send();
 
-    let hashPool = Poseidon.hash(zkToken0Address.toFields().concat(zkToken1Address.toFields()));
-    let poolAddress = PublicKey.from({ x: hashPool, isOdd: Bool(false) });
-    await fetchAccount({ publicKey: poolAddress });
+    let initial = Bool(false);
+    let stateType = Bool;
 
-    // update transaction
+    // example actions data
+    let actions: MerkleList<MerkleList<Pair>> = zkApp.reducer.getActions();
+
+    let result = zkApp.reducer.reduce(
+      actions,
+      stateType,
+      (state: Bool, action: Pair) => state.or(action.token0.equals(zkToken0Address) && action.token1.equals(zkToken1Address)),
+      initial
+    );
+
+    const pair = actions.data.get()[0].element.data.get()[0];
+    console.log("actions", pair.element.token0.toBase58());
+    console.log("actions", pair.element.pool.toBase58());
+    console.log("newAddress", newAddress.toBase58());
+    expect(result).toEqual(Bool(true));
+
+    // the pool is located to new address
+    const zkPool = new Pool(newAddress);
+    // the pool is not init
+    const poolState0 = zkPool.poolState.get();
+    expect(poolState0.init).toEqual(Bool(false));
+
+    await mintToken();
+
+    const balance = Mina.getBalance(senderAccount, zkToken0.deriveTokenId());
+    console.log("balance user", balance.toString());
+
+    const balanceMina = Mina.getBalance(senderAccount);
+    console.log("balance mina user", balanceMina.toString());
+
+    const txn0 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 2);
+      await zkToken0.transfer(senderAccount, newAddress, amt);
+      await zkToken1.transfer(senderAccount, newAddress, amt);
+    });
+    await txn0.prove();
+    await txn0.sign([senderKey]).send();
+
+    // create pool
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);
-      const address = await zkApp.createPool(pool.verificationKey, zkToken0Address, zkToken1Address);
-      console.log("pool address", address.toBase58());
-      console.log("factory address", zkAppAddress.toBase58());
+      await zkPool.create(zkToken0Address, zkToken1Address);
     });
     await txn.prove();
+    await txn.sign([senderKey]).send();
 
-    console.log(txn.toPretty());
-    await txn.sign([senderKey, zkAppPrivateKey]).send();
+    const poolState = zkPool.poolState.get();
+    expect(poolState.init).toEqual(Bool(true));
+
+    const liquidityUser = Mina.getBalance(senderAccount, zkPool.deriveTokenId());
+    const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);
+    console.log("balance liquidity user", liquidityUser.toString());
+    expect(liquidityUser.value).toEqual(expected);
+
   });
+
 
   async function mintToken() {
     // update transaction

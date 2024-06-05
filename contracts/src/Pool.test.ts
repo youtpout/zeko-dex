@@ -69,9 +69,6 @@ describe('Pool', () => {
     await localDeploy();
     const num = zkApp.token0.get();
     expect(num).toEqual(PublicKey.empty());
-
-    const compile = await Pool.compile();
-    console.log("pool vk hash", compile.verificationKey.hash);
   });
 
   it('create a pool', async () => {
