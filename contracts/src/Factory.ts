@@ -1,4 +1,4 @@
-import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert } from 'o1js';
+import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert, fetchAccount, MerkleList } from 'o1js';
 import { Pool } from './Pool';
 
 export class Pair extends Struct({
@@ -27,11 +27,23 @@ export class Factory extends SmartContract {
 
     @method.returns(PublicKey)
     async createPool(_newAccount: PublicKey, _token0: PublicKey, _token1: PublicKey) {
+        // create a pool as this new address
         const update = AccountUpdate.createSigned(_newAccount, this.tokenId);
 
-        const pool = new Pool(update.publicKey);
-        const state = pool.poolState.getAndRequireEquals();
-        state.init.assertFalse("Pool already exist");
+        let initial = Bool(false);
+        let stateType = Bool;
+
+        // example actions data
+        let actions: MerkleList<MerkleList<Pair>> = this.reducer.getActions();
+
+        let result = this.reducer.reduce(
+            actions,
+            stateType,
+            (state: Bool, action: Pair) => state.or(action.token0.equals(_token0) && action.token1.equals(_token1)),
+            initial
+        );
+
+        result.assertFalse("Pool already created");
 
         update.body.update.verificationKey = { isSome: Bool(true), value: { data: vk, hash: poolVerificationKey } };
         update.body.update.permissions = {
@@ -44,7 +56,6 @@ export class Factory extends SmartContract {
 
         let newPair = new Pair({ token0: _token0, token1: _token1, pool: update.publicKey });
         this.reducer.dispatch(newPair);
-
 
         return update.publicKey;
     }
