@@ -41,7 +41,7 @@ export class Factory extends SmartContract {
         let result = this.reducer.reduce(
             actions,
             stateType,
-            (state: Bool, action: Pair) => state.or(action.token0.equals(_token0) && action.token1.equals(_token1)),
+            (state: Bool, action: Pair) => state.or(action.token0.equals(_token0).and(action.token1.equals(_token1))),
             initial
         );
 

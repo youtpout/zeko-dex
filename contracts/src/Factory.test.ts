@@ -95,7 +95,7 @@ describe('Add', () => {
     let result = zkApp.reducer.reduce(
       actions,
       stateType,
-      (state: Bool, action: Pair) => state.or(action.token0.equals(zkToken0Address) && action.token1.equals(zkToken1Address)),
+      (state: Bool, action: Pair) => state.or(action.token0.equals(zkToken0Address).and(action.token1.equals(zkToken1Address))),
       initial
     );
 
@@ -178,9 +178,6 @@ describe('Add', () => {
 
     const newAccount = PrivateKey.random();
     let newAddress = PublicKey.empty();
-
-    const newAccount2 = PrivateKey.random();
-    let newAddress2 = PublicKey.empty();
 
     // register pool
     const txn00 = await Mina.transaction(senderAccount, async () => {
