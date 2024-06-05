@@ -27,7 +27,7 @@ export class Factory extends SmartContract {
 
     @method.returns(PublicKey)
     async createPool(_newAccount: PublicKey, _token0: PublicKey, _token1: PublicKey) {
-        // todo check token order && account not already used
+        _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
         // create a pool as this new address
         const update = AccountUpdate.createSigned(_newAccount, this.tokenId);
@@ -59,6 +59,32 @@ export class Factory extends SmartContract {
                 editState: Permissions.proof()
             },
         };
+
+        let fields0 = _token0.toFields();
+        let fields1 = _token1.toFields();
+
+        update.body.update.appState = [
+            { isSome: Bool(true), value: fields0[0] },
+            { isSome: Bool(true), value: fields0[1] },
+            { isSome: Bool(true), value: fields1[0] },
+            { isSome: Bool(true), value: fields1[1] },
+            { isSome: Bool(true), value: Field(0) },
+            { isSome: Bool(true), value: Field(0) },
+            { isSome: Bool(true), value: Field(0) },
+            { isSome: Bool(true), value: Field(0) },
+        ];
+
+
+        // update.body.update.appState = [
+        //     { isSome: Bool(true), value: _token0.x },
+        //     { isSome: Bool(true), value: _token0.x.isOdd().toField() },
+        //     { isSome: Bool(true), value: _token1.x },
+        //     { isSome: Bool(true), value: _token1.x.isOdd().toField() },
+        //     { isSome: Bool(true), value: Field(0) },
+        //     { isSome: Bool(true), value: Field(0) },
+        //     { isSome: Bool(true), value: Field(0) },
+        //     { isSome: Bool(true), value: Field(0) },
+        // ];
 
         let newPair = new Pair({ token0: _token0, token1: _token1, pool: update.publicKey });
         this.reducer.dispatch(newPair);

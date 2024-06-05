@@ -42,11 +42,17 @@ describe('Add', () => {
     zkAppAddress = zkAppPrivateKey.toPublicKey();
     zkApp = new Factory(zkAppAddress);
 
-    zkToken0PrivateKey = PrivateKey.random();
+    let keyTokenX = PrivateKey.random();
+    let keyTokenY = PrivateKey.random();
+
+    // order token to create pool
+    let xIsLower = keyTokenX.toPublicKey().x.lessThan(keyTokenY.toPublicKey().x);
+
+    zkToken0PrivateKey = xIsLower.toBoolean() ? keyTokenX : keyTokenY;
     zkToken0Address = zkToken0PrivateKey.toPublicKey();
     zkToken0 = new SimpleToken(zkToken0Address);
 
-    zkToken1PrivateKey = PrivateKey.random();
+    zkToken1PrivateKey = xIsLower.toBoolean() ? keyTokenY : keyTokenX;
     zkToken1Address = zkToken1PrivateKey.toPublicKey();
     zkToken1 = new SimpleToken(zkToken1Address);
   });
@@ -72,7 +78,9 @@ describe('Add', () => {
 
 
   it('deploy a pool', async () => {
-
+    let empty = PublicKey.empty();
+    console.log("empty x", empty.x.toString());
+    console.log("empty", empty.toBase58());
     await localDeploy();
     let amt = UInt64.from(10 * 10 ** 9);
 
@@ -110,6 +118,17 @@ describe('Add', () => {
     // the pool is not init
     const poolState0 = zkPool.poolState.get();
     expect(poolState0.init).toEqual(Bool(false));
+
+    const poolToken0 = zkPool.token0.get();
+    const poolToken1 = zkPool.token1.get();
+
+    console.log("token 0", zkToken0Address.toBase58());
+    console.log("pool token 0", poolToken0.toBase58());
+    console.log("token 1", zkToken1Address.toBase58());
+    console.log("pool token 1", poolToken1.toBase58());
+
+    expect(poolToken0).toEqual(zkToken0Address);
+    expect(poolToken1).toEqual(zkToken1Address);
 
     await mintToken();
 
