@@ -1,6 +1,7 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import { Factory, Pair } from './Factory';
 import { Pool, SimpleToken, minimunLiquidity } from './Pool';
+import { add } from 'o1js/dist/node/lib/provable/gadgets/native-curve';
 
 
 /*
@@ -130,10 +131,11 @@ describe('Add', () => {
     const balanceMina = Mina.getBalance(senderAccount);
     //console.log("balance mina user", balanceMina.toString());
 
+    //await approveTransfer(zkPool.self);
+
     const txn0 = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 2);
-      await zkToken0.transfer(senderAccount, newAddress, amt);
-      await zkToken1.transfer(senderAccount, newAddress, amt);
+      await zkPool.createFirstDeposit(amt, amt);
     });
     await txn0.prove();
     await txn0.sign([senderKey]).send();
@@ -141,7 +143,7 @@ describe('Add', () => {
     // create pool
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkPool.create(zkToken0Address, zkToken1Address);
+      await zkPool.firstDeposit();
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
@@ -224,6 +226,17 @@ describe('Add', () => {
     });
     await txn2.prove();
     await txn2.sign([senderKey, zkToken1PrivateKey]).send();
+  }
+
+
+  async function approveTransfer(account: AccountUpdate) {
+    // approve transfer
+    const txn = await Mina.transaction(senderAccount, async () => {
+      await zkToken0.approveAccountUpdate(account);
+      await zkToken1.approveAccountUpdate(account);
+    });
+    await txn.prove();
+    await txn.sign([senderKey]).send();
   }
 
 });

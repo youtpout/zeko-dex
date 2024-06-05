@@ -55,12 +55,33 @@ export class Pool extends TokenContract {
     this.checkZeroBalanceChange(forest);
   }
 
-  @method.returns(UInt64)
-  async create(_token0: PublicKey, _token1: PublicKey) {
-    _token0.equals(_token1).assertFalse("Identical token");
+  async createFirstDeposit(_amount0: UInt64, _amount1: UInt64) {
+    let _token0 = this.token0.getAndRequireEquals();
+    let _token1 = this.token1.getAndRequireEquals();
+
+    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
     let _poolState = this.poolState.getAndRequireEquals();
-    _poolState.init.assertFalse("Pool already created");
+    _poolState.init.assertFalse("Pool already inited");
+
+    let simpleToken0 = new SimpleToken(_token0);
+    let simpleToken1 = new SimpleToken(_token1);
+
+    let senderPublicKey = this.sender.getUnconstrained();
+
+    await simpleToken0.transfer(senderPublicKey, this.address, _amount0);
+    await simpleToken1.transfer(senderPublicKey, this.address, _amount1);
+  }
+
+  @method.returns(UInt64)
+  async firstDeposit() {
+    let _token0 = this.token0.getAndRequireEquals();
+    let _token1 = this.token1.getAndRequireEquals();
+
+    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
+
+    let _poolState = this.poolState.getAndRequireEquals();
+    _poolState.init.assertFalse("Pool already inited");
 
     let simpleToken0 = new SimpleToken(_token0);
     let simpleToken1 = new SimpleToken(_token1);
@@ -84,8 +105,6 @@ export class Pool extends TokenContract {
     amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
 
     _poolState.init = Bool(true);
-    this.token0.set(_token0);
-    this.token1.set(_token1);
 
     let senderPublicKey = this.sender.getAndRequireSignature();
 
