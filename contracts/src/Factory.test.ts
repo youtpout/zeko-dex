@@ -74,10 +74,6 @@ describe('Add', () => {
     await localDeploy();
     const num = zkApp.numberPool.get();
     expect(num).toEqual(Field(0));
-
-    const key = await Pool.compile();
-    console.log("key pool", key.verificationKey.data);
-    console.log("key pool hash", key.verificationKey.hash);
   });
 
 

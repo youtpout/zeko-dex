@@ -118,9 +118,8 @@ export class Pool extends TokenContract {
 
   @method
   async mintLiquidity() {
-    // mint first supply if not done
 
-    this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
+    let senderAccount = this.sender.getAndRequireSignature();
 
     // type for the "accumulated output" of reduce -- the `stateType`
     let stateType = UInt64;
@@ -134,110 +133,17 @@ export class Pool extends TokenContract {
     let tokenToMint: UInt64 = this.reducer.reduce(
       actions,
       stateType,
-      (state: UInt64, action: Liquidity) => Provable.if(action.minted, state.sub(action.amount), state.add(action.amount)),
+      (state: UInt64, action: Liquidity) => Provable.if(action.minted.and(action.owner.equals(senderAccount)), state.sub(action.amount), state.add(action.amount)),
       initial
     );
 
-    this.internal.mint({ address: PublicKey.empty(), amount: tokenToMint });
+    tokenToMint.assertGreaterThan(UInt64.zero, "Nothing to mint");
+
+    this.internal.mint({ address: senderAccount, amount: tokenToMint });
+
+    let liquidityUser = new Liquidity({ owner: senderAccount, amount: tokenToMint, minted: Bool(true) });
+    this.reducer.dispatch(liquidityUser);
 
   }
-
-  // @method.returns(UInt64)
-  // async mintLiquidity() {
-  //   let _token0 = this.token0.getAndRequireEquals();
-  //   let _token1 = this.token1.getAndRequireEquals();
-
-  //   _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
-
-  //   let _poolState = this.poolState.getAndRequireEquals();
-  //   _poolState.init.assertFalse("Pool already inited");
-
-  //   let simpleToken0 = new SimpleToken(_token0);
-  //   let simpleToken1 = new SimpleToken(_token1);
-
-
-  //   let update0 = new SimpleToken(
-  //     this.address,
-  //     simpleToken0.deriveTokenId()
-  //   );
-
-  //   let update1 = new SimpleToken(
-  //     this.address,
-  //     simpleToken1.deriveTokenId()
-  //   );
-
-  //   // the amount need to be pretransfer to prevent from too much accoun update
-  //   let amount0 = update0.account.balance.get();
-  //   let amount1 = update1.account.balance.get();
-
-  //   amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
-  //   amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
-
-  //   _poolState.init = Bool(true);
-
-  //   let senderPublicKey = this.sender.getAndRequireSignature();
-
-  //   let liquidity = UInt64.zero;
-
-  //   // use field for sqrt
-  //   let field0 = new Field(amount0.value);
-  //   let field1 = new Field(amount1.value);
-
-  //   let liquidityField = field0.mul(field1).sqrt().sub(minimunLiquidity);
-  //   liquidityField.assertGreaterThan(0, "Insufficient liquidity for minimun liquidity");
-  //   liquidityField.assertLessThanOrEqual(UInt64.MAXINT().value, "Too much liquidity");
-
-  //   liquidity = UInt64.Unsafe.fromField(liquidityField);
-  //   liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
-
-  //   // mint minimun to address 0
-  //   this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
-  //   _poolState.totalSupply.add(minimunLiquidity);
-
-  //   // mint to user
-  //   this.internal.mint({ address: senderPublicKey, amount: liquidity });
-  //   _poolState.totalSupply.add(liquidity);
-
-  //   _poolState.reserve0.add(amount0);
-  //   _poolState.reserve1.add(amount1);
-
-  //   this.poolState.set(_poolState);
-
-  //   return liquidity;
-  // }
-
-  /*
-  @method.returns(UInt64)
-  async mintLiquidity(_amount0: UInt64, _amount1: UInt64) {
-    let _poolState = this.poolState.getAndRequireEquals();
-    _poolState.init.assertTrue("Pool wasn't created");
-    let address0 = this.token0.getAndRequireEquals();
-    let address1 = this.token1.getAndRequireEquals();
-
-    let senderPublicKey = this.sender.getUnconstrained();
-    let senderUpdate = AccountUpdate.createSigned(senderPublicKey);
-    // senderUpdate.send({ to: this, amount: _amount0 });
-    let simpleToken0 = new SimpleToken(address0);
-    simpleToken0.transfer(senderUpdate, this.address, _amount0);
-
-    let simpleToken1 = new SimpleToken(address1);
-    simpleToken1.transfer(senderUpdate, this.address, _amount1);
-
-    let liquidity = _amount0.mul(_poolState.totalSupply).div(_poolState.reserve0)
-    liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
-
-    // mint to user
-    this.internal.mint({ address: senderPublicKey, amount: liquidity });
-
-    _poolState.reserve0.add(_amount0);
-    _poolState.reserve1.add(_amount1);
-    _poolState.totalSupply.add(liquidity);
-
-    this.poolState.set(_poolState);
-
-
-    return liquidity;
-  }*/
-
 
 }

@@ -9,9 +9,8 @@ export class Pair extends Struct({
 
 }
 
-const poolVerificationKey = Field(4476838408891924137379222136012132370693159892959050257785308099148346410591n);
-const vk = "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";
-
+const poolVerificationKey = Field(15741874926307191066637755900537557830862568039590237802024571690267749239089n);
+const vk = "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";
 /**
  * Factory who list pools
  */
@@ -73,18 +72,6 @@ export class Factory extends SmartContract {
             { isSome: Bool(true), value: Field(0) },
             { isSome: Bool(true), value: Field(0) },
         ];
-
-
-        // update.body.update.appState = [
-        //     { isSome: Bool(true), value: _token0.x },
-        //     { isSome: Bool(true), value: _token0.x.isOdd().toField() },
-        //     { isSome: Bool(true), value: _token1.x },
-        //     { isSome: Bool(true), value: _token1.x.isOdd().toField() },
-        //     { isSome: Bool(true), value: Field(0) },
-        //     { isSome: Bool(true), value: Field(0) },
-        //     { isSome: Bool(true), value: Field(0) },
-        //     { isSome: Bool(true), value: Field(0) },
-        // ];
 
         let newPair = new Pair({ token0: _token0, token1: _token1, pool: update.publicKey });
         this.reducer.dispatch(newPair);
