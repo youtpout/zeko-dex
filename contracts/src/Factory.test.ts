@@ -145,6 +145,61 @@ describe('Add', () => {
 
   });
 
+  it('deploy twice', async () => {
+
+    await localDeploy();
+
+    const newAccount = PrivateKey.random();
+    let newAddress = PublicKey.empty();
+
+    const newAccount2 = PrivateKey.random();
+    let newAddress2 = PublicKey.empty();
+
+    // register pool
+    const txn00 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken0Address, zkToken1Address);
+    });
+    await txn00.prove();
+    await txn00.sign([senderKey, newAccount]).send();
+
+
+    await expect(Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      newAddress = await zkApp.createPool(newAccount2.toPublicKey(), zkToken0Address, zkToken1Address);
+    })).rejects.toThrow("Pool already created");
+
+
+  });
+
+  it('deploy with same account', async () => {
+
+    await localDeploy();
+
+    const newAccount = PrivateKey.random();
+    let newAddress = PublicKey.empty();
+
+    const newAccount2 = PrivateKey.random();
+    let newAddress2 = PublicKey.empty();
+
+    // register pool
+    const txn00 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken0Address, zkToken1Address);
+    });
+    await txn00.prove();
+    await txn00.sign([senderKey, newAccount]).send();
+
+
+    const txn1 = await Mina.transaction(senderAccount, async () => {
+      newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken1Address, zkToken0Address);
+    });
+    await txn1.prove();
+    await expect(txn1.sign([senderKey, newAccount]).send()).rejects.toThrow();
+
+
+  });
+
 
   async function mintToken() {
     // update transaction

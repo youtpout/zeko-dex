@@ -1,4 +1,4 @@
-import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert, fetchAccount, MerkleList } from 'o1js';
+import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert, fetchAccount, MerkleList, TransactionVersion } from 'o1js';
 import { Pool } from './Pool';
 
 export class Pair extends Struct({
@@ -27,6 +27,8 @@ export class Factory extends SmartContract {
 
     @method.returns(PublicKey)
     async createPool(_newAccount: PublicKey, _token0: PublicKey, _token1: PublicKey) {
+        // todo check token order && account not already used
+
         // create a pool as this new address
         const update = AccountUpdate.createSigned(_newAccount, this.tokenId);
 
@@ -50,7 +52,11 @@ export class Factory extends SmartContract {
             isSome: Bool(true),
             value: {
                 ...Permissions.default(),
-                editState: Permissions.proof(),
+                setVerificationKey: {
+                    auth: Permissions.impossible(),
+                    txnVersion: TransactionVersion.current()
+                },
+                editState: Permissions.proof()
             },
         };
 
