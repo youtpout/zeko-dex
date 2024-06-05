@@ -55,6 +55,8 @@ export class Pool extends TokenContract {
     this.checkZeroBalanceChange(forest);
   }
 
+
+  @method
   async createFirstDeposit(_amount0: UInt64, _amount1: UInt64) {
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
@@ -71,10 +73,12 @@ export class Pool extends TokenContract {
 
     await simpleToken0.transfer(senderPublicKey, this.address, _amount0);
     await simpleToken1.transfer(senderPublicKey, this.address, _amount1);
+
+    // todo mint for this user
   }
 
   @method.returns(UInt64)
-  async firstDeposit() {
+  async mintLiquidity() {
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
 

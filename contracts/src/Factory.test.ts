@@ -140,10 +140,16 @@ describe('Add', () => {
     await txn0.prove();
     await txn0.sign([senderKey]).send();
 
-    // create pool
+    const token0Pool = Mina.getBalance(zkPool.address, zkToken0.deriveTokenId());
+    const token1Pool = Mina.getBalance(zkPool.address, zkToken1.deriveTokenId());
+
+    console.log("token 0 pool", token0Pool.toString());
+    console.log("token 1 pool", token1Pool.toString());
+
+    // mint liqudity
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkPool.firstDeposit();
+      await zkPool.mintLiquidity();
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
