@@ -104,10 +104,10 @@ describe('Add', () => {
       initial
     );
 
-    const pair = actions.data.get()[0].element.data.get()[0];
-    console.log("actions", pair.element.token0.toBase58());
-    console.log("actions", pair.element.pool.toBase58());
-    console.log("newAddress", newAddress.toBase58());
+    // const pair = actions.data.get()[0].element.data.get()[0];
+    // console.log("actions", pair.element.token0.toBase58());
+    // console.log("actions", pair.element.pool.toBase58());
+    // console.log("newAddress", newAddress.toBase58());
     expect(result).toEqual(Bool(true));
 
     // the pool is located to new address
@@ -125,10 +125,10 @@ describe('Add', () => {
     await mintToken();
 
     const balance = Mina.getBalance(senderAccount, zkToken0.deriveTokenId());
-    console.log("balance user", balance.toString());
+    //console.log("balance user", balance.toString());
 
     const balanceMina = Mina.getBalance(senderAccount);
-    console.log("balance mina user", balanceMina.toString());
+    //console.log("balance mina user", balanceMina.toString());
 
     const txn0 = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 2);
@@ -151,7 +151,7 @@ describe('Add', () => {
 
     const liquidityUser = Mina.getBalance(senderAccount, zkPool.deriveTokenId());
     const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);
-    console.log("balance liquidity user", liquidityUser.toString());
+    //console.log("balance liquidity user", liquidityUser.toString());
     expect(liquidityUser.value).toEqual(expected);
 
   });
