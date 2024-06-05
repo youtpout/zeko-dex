@@ -78,9 +78,6 @@ describe('Add', () => {
 
 
   it('deploy a pool', async () => {
-    let empty = PublicKey.empty();
-    console.log("empty x", empty.x.toString());
-    console.log("empty", empty.toBase58());
     await localDeploy();
     let amt = UInt64.from(10 * 10 ** 9);
 
@@ -121,11 +118,6 @@ describe('Add', () => {
 
     const poolToken0 = zkPool.token0.get();
     const poolToken1 = zkPool.token1.get();
-
-    console.log("token 0", zkToken0Address.toBase58());
-    console.log("pool token 0", poolToken0.toBase58());
-    console.log("token 1", zkToken1Address.toBase58());
-    console.log("pool token 1", poolToken1.toBase58());
 
     expect(poolToken0).toEqual(zkToken0Address);
     expect(poolToken1).toEqual(zkToken1Address);
@@ -208,7 +200,7 @@ describe('Add', () => {
 
 
     const txn1 = await Mina.transaction(senderAccount, async () => {
-      newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken1Address, zkToken0Address);
+      newAddress = await zkApp.createPool(newAccount.toPublicKey(), PublicKey.empty(), zkToken1Address);
     });
     await txn1.prove();
     await expect(txn1.sign([senderKey, newAccount]).send()).rejects.toThrow();
