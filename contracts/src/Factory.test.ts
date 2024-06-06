@@ -147,11 +147,25 @@ describe('Add', () => {
       AccountUpdate.fundNewAccount(senderAccount, 2);
       await zkToken0.transfer(senderAccount, newAddress, amt);
       await zkToken1.transfer(senderAccount, newAddress, amt);
-      await zkPool.createFirstDeposit();
     });
     console.log(txn0.toPretty());
     await txn0.prove();
     await txn0.sign([senderKey]).send();
+
+    let account0 = AccountUpdate.create(zkPool.address, zkToken0.deriveTokenId());
+    let account1 = AccountUpdate.create(zkPool.address, zkToken1.deriveTokenId());
+    let _amount0 = account0.account.balance.getAndRequireEquals();
+    let _amount1 = account1.account.balance.getAndRequireEquals();
+    console.log("bal acc 0", _amount0.toBigInt());
+    console.log("bal acc 1", _amount1.toBigInt());
+
+    const txn2 = await Mina.transaction(senderAccount, async () => {
+      //AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkPool.createFirstDeposit();
+    });
+    console.log(txn2.toPretty());
+    await txn2.prove();
+    await txn2.sign([senderKey]).send();
 
     // const token0Pool = Mina.getBalance(zkPool.address, zkToken0.deriveTokenId());
     // const token1Pool = Mina.getBalance(zkPool.address, zkToken1.deriveTokenId());

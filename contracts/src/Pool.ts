@@ -1,4 +1,4 @@
-import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer } from 'o1js';
+import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer, Account } from 'o1js';
 
 export class PoolState extends Struct({
   reserve0: UInt64,
@@ -113,11 +113,14 @@ export class Pool extends TokenContract {
     let simpleToken0 = new SimpleToken(_token0);
     let simpleToken1 = new SimpleToken(_token1);
 
-    let account0 = AccountUpdate.createSigned(this.address, simpleToken0.deriveTokenId());
-    let account1 = AccountUpdate.createSigned(this.address, simpleToken1.deriveTokenId());
+    let account0 = new SimpleToken(this.address, simpleToken0.deriveTokenId());
+    let account1 = new SimpleToken(this.address, simpleToken1.deriveTokenId());
 
     let _amount0 = account0.account.balance.getAndRequireEquals();
     let _amount1 = account1.account.balance.getAndRequireEquals();
+
+    _amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
+    _amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
 
     let senderPublicKey = this.sender.getUnconstrained();
 
@@ -129,7 +132,8 @@ export class Pool extends TokenContract {
 
     let liquidityField = field0.mul(field1).sqrt().sub(minimunLiquidity);
     liquidityField.assertGreaterThan(0, "Insufficient liquidity for minimun liquidity");
-    liquidity = UInt64.fromFields([liquidityField]);
+    liquidityField.assertLessThanOrEqual(UInt64.MAXINT().value, " Supply too much liquidities");
+    liquidity = UInt64.Unsafe.fromField(liquidityField);
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
     // attribute minimun to address 0    
