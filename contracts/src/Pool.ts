@@ -1,7 +1,4 @@
 import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer } from 'o1js';
-import { Prover } from 'o1js/dist/node/lib/proof-system/zkprogram';
-import { add } from 'o1js/dist/node/lib/provable/gadgets/native-curve';
-
 
 export class PoolState extends Struct({
   reserve0: UInt64,
@@ -56,19 +53,54 @@ export class Pool extends TokenContract {
   @state(PoolState) poolState = State<PoolState>();
   @state(Field) kLast = State<Field>();
 
-  reducer = Reducer({ actionType: Liquidity });
-
   init() {
     super.init();
   }
+
+
+  // precreate account to limit number of account update
+  @method async createAccount(user: PublicKey) {
+    this.internal.mint({ address: user, amount: 1 });
+  }
+
 
   @method async approveBase(forest: AccountUpdateForest) {
     this.checkZeroBalanceChange(forest);
   }
 
+  @method
+  async depositToken0(_amount: UInt64) {
+    let _token0 = this.token0.getAndRequireEquals();
+    let _token1 = this.token1.getAndRequireEquals();
+
+    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
+
+
+    let simpleToken0 = new SimpleToken(_token0);
+
+    let senderPublicKey = this.sender.getUnconstrained();
+
+    await simpleToken0.transfer(senderPublicKey, this.address, _amount);
+
+
+  }
+
+  @method
+  async depositToken1(_amount: UInt64) {
+    let _token0 = this.token0.getAndRequireEquals();
+    let _token1 = this.token1.getAndRequireEquals();
+
+    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
+
+    let simpleToken0 = new SimpleToken(_token0);
+
+    let senderPublicKey = this.sender.getUnconstrained();
+
+    await simpleToken0.transfer(senderPublicKey, this.address, _amount);
+  }
 
   @method.returns(UInt64)
-  async createFirstDeposit(_amount0: UInt64, _amount1: UInt64) {
+  async createFirstDeposit() {
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
 
@@ -77,13 +109,17 @@ export class Pool extends TokenContract {
     let _poolState = this.poolState.getAndRequireEquals();
     _poolState.init.assertFalse("Pool already inited");
 
+
     let simpleToken0 = new SimpleToken(_token0);
     let simpleToken1 = new SimpleToken(_token1);
 
-    let senderPublicKey = this.sender.getUnconstrained();
+    let account0 = AccountUpdate.createSigned(this.address, simpleToken0.deriveTokenId());
+    let account1 = AccountUpdate.createSigned(this.address, simpleToken1.deriveTokenId());
 
-    await simpleToken0.transfer(senderPublicKey, this.address, _amount0);
-    await simpleToken1.transfer(senderPublicKey, this.address, _amount1);
+    let _amount0 = account0.account.balance.getAndRequireEquals();
+    let _amount1 = account1.account.balance.getAndRequireEquals();
+
+    let senderPublicKey = this.sender.getUnconstrained();
 
     let liquidity = UInt64.zero;
 
@@ -96,14 +132,12 @@ export class Pool extends TokenContract {
     liquidity = UInt64.fromFields([liquidityField]);
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
-    // attribute minimun to address 0
-    let liquidityZero = new Liquidity({ owner: PublicKey.empty(), amount: new UInt64(minimunLiquidity), minted: Bool(false) });
-    this.reducer.dispatch(liquidityZero);
+    // attribute minimun to address 0    
+    //this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
     _poolState.totalSupply.add(minimunLiquidity);
 
     // attribute rest to user
-    let liquidityUser = new Liquidity({ owner: senderPublicKey, amount: liquidity, minted: Bool(false) });
-    this.reducer.dispatch(liquidityUser);
+    this.internal.mint({ address: senderPublicKey, amount: liquidity });
     _poolState.totalSupply.add(liquidity);
 
     _poolState.init = Bool(true);
@@ -119,30 +153,30 @@ export class Pool extends TokenContract {
   @method
   async mintLiquidity() {
 
-    let senderAccount = this.sender.getAndRequireSignature();
+    // let senderAccount = this.sender.getAndRequireSignature();
 
-    // type for the "accumulated output" of reduce -- the `stateType`
-    let stateType = UInt64;
+    // // type for the "accumulated output" of reduce -- the `stateType`
+    // let stateType = UInt64;
 
-    // example actions data
-    let actions = this.reducer.getActions();
+    // // example actions data
+    // let actions = this.reducer.getActions();
 
-    // state and actionState before applying actions
-    let initial = UInt64.zero;
+    // // state and actionState before applying actions
+    // let initial = UInt64.zero;
 
-    let tokenToMint: UInt64 = this.reducer.reduce(
-      actions,
-      stateType,
-      (state: UInt64, action: Liquidity) => Provable.if(action.minted.and(action.owner.equals(senderAccount)), state.sub(action.amount), state.add(action.amount)),
-      initial
-    );
+    // let tokenToMint: UInt64 = this.reducer.reduce(
+    //   actions,
+    //   stateType,
+    //   (state: UInt64, action: Liquidity) => Provable.if(action.minted.and(action.owner.equals(senderAccount)), state.sub(action.amount), state.add(action.amount)),
+    //   initial
+    // );
 
-    tokenToMint.assertGreaterThan(UInt64.zero, "Nothing to mint");
+    // tokenToMint.assertGreaterThan(UInt64.zero, "Nothing to mint");
 
-    this.internal.mint({ address: senderAccount, amount: tokenToMint });
+    // this.internal.mint({ address: senderAccount, amount: tokenToMint });
 
-    let liquidityUser = new Liquidity({ owner: senderAccount, amount: tokenToMint, minted: Bool(true) });
-    this.reducer.dispatch(liquidityUser);
+    // let liquidityUser = new Liquidity({ owner: senderAccount, amount: tokenToMint, minted: Bool(true) });
+    // this.reducer.dispatch(liquidityUser);
 
   }
 

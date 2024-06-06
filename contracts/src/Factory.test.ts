@@ -125,34 +125,39 @@ describe('Add', () => {
 
     await mintToken();
 
-    const balance = Mina.getBalance(senderAccount, zkToken0.deriveTokenId());
+    //const balance = Mina.getBalance(senderAccount, zkToken0.deriveTokenId());
     //console.log("balance user", balance.toString());
 
-    const balanceMina = Mina.getBalance(senderAccount);
+    //const balanceMina = Mina.getBalance(senderAccount);
     //console.log("balance mina user", balanceMina.toString());
 
     //await approveTransfer(zkPool.self);
 
-    const txn0 = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 2);
-      await zkPool.createFirstDeposit(amt, amt);
-    });
-    await txn0.prove();
-    await txn0.sign([senderKey]).send();
-
-    const token0Pool = Mina.getBalance(zkPool.address, zkToken0.deriveTokenId());
-    const token1Pool = Mina.getBalance(zkPool.address, zkToken1.deriveTokenId());
-
-    console.log("token 0 pool", token0Pool.toString());
-    console.log("token 1 pool", token1Pool.toString());
-
-    // mint liqudity
+    // create account
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkPool.mintLiquidity();
+      await zkPool.createAccount(PublicKey.empty());
+      await zkPool.createAccount(senderAccount);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
+
+
+    const txn0 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 2);
+      await zkToken0.transfer(senderAccount, newAddress, amt);
+      await zkToken1.transfer(senderAccount, newAddress, amt);
+      await zkPool.createFirstDeposit();
+    });
+    console.log(txn0.toPretty());
+    await txn0.prove();
+    await txn0.sign([senderKey]).send();
+
+    // const token0Pool = Mina.getBalance(zkPool.address, zkToken0.deriveTokenId());
+    // const token1Pool = Mina.getBalance(zkPool.address, zkToken1.deriveTokenId());
+
+    // console.log("token 0 pool", token0Pool.toString());
+    // console.log("token 1 pool", token1Pool.toString());
 
     const poolState = zkPool.poolState.get();
     expect(poolState.init).toEqual(Bool(true));
