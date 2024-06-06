@@ -64,6 +64,7 @@ export class Pool extends TokenContract {
 
   @method
   async depositToken0(_amount: UInt64) {
+    _amount.assertGreaterThan(UInt64.zero, "Insufficient amount");
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
 
@@ -79,16 +80,17 @@ export class Pool extends TokenContract {
 
   @method
   async depositToken1(_amount: UInt64) {
+    _amount.assertGreaterThan(UInt64.zero, "Insufficient amount");
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
 
     _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
-    let simpleToken0 = new SimpleToken(_token0);
+    let simpleToken1 = new SimpleToken(_token1);
 
     let senderPublicKey = this.sender.getUnconstrained();
 
-    await simpleToken0.transfer(senderPublicKey, this.address, _amount);
+    await simpleToken1.transfer(senderPublicKey, this.address, _amount);
   }
 
   @method.returns(UInt64)
