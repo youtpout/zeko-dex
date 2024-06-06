@@ -133,15 +133,6 @@ describe('Add', () => {
 
     //await approveTransfer(zkPool.self);
 
-    // create account
-    const txn = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkPool.createAccount(PublicKey.empty());
-      await zkPool.createAccount(senderAccount);
-    });
-    await txn.prove();
-    await txn.sign([senderKey]).send();
-
 
     const txn0 = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 2);
@@ -160,7 +151,7 @@ describe('Add', () => {
     console.log("bal acc 1", _amount1.toBigInt());
 
     const txn2 = await Mina.transaction(senderAccount, async () => {
-      //AccountUpdate.fundNewAccount(senderAccount, 1);
+      AccountUpdate.fundNewAccount(senderAccount, 1);
       await zkPool.createFirstDeposit();
     });
     console.log(txn2.toPretty());

@@ -58,12 +58,6 @@ export class Pool extends TokenContract {
   }
 
 
-  // precreate account to limit number of account update
-  @method async createAccount(user: PublicKey) {
-    this.internal.mint({ address: user, amount: 1 });
-  }
-
-
   @method async approveBase(forest: AccountUpdateForest) {
     this.checkZeroBalanceChange(forest);
   }
@@ -75,13 +69,11 @@ export class Pool extends TokenContract {
 
     _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
-
     let simpleToken0 = new SimpleToken(_token0);
 
     let senderPublicKey = this.sender.getUnconstrained();
 
     await simpleToken0.transfer(senderPublicKey, this.address, _amount);
-
 
   }
 
