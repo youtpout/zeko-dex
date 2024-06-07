@@ -1,4 +1,7 @@
-import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer, Account } from 'o1js';
+import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer, Account, Experimental, Option } from 'o1js';
+
+
+const { OffchainState, OffchainStateCommitments } = Experimental;
 
 export class PoolState extends Struct({
   reserve0: UInt64,
@@ -17,6 +20,14 @@ export class Liquidity extends Struct({
 
 }
 
+export const offchainState = OffchainState(
+  {
+    liquidities: OffchainState.Map(PublicKey, UInt64),
+    kLast: OffchainState.Field(Field)
+  }
+);
+
+class StateProof extends offchainState.Proof { }
 
 // minimum liquidity permanently blocked in the pool
 export const minimunLiquidity = 10 ** 3;
@@ -51,10 +62,18 @@ export class Pool extends TokenContract {
   @state(PublicKey) token0 = State<PublicKey>();
   @state(PublicKey) token1 = State<PublicKey>();
   @state(PoolState) poolState = State<PoolState>();
-  @state(Field) kLast = State<Field>();
+
+  @state(OffchainStateCommitments) offchainState = State(
+    OffchainStateCommitments.empty()
+  );
 
   init() {
     super.init();
+  }
+
+  @method
+  async settle(proof: StateProof) {
+    await offchainState.settle(proof);
   }
 
 
@@ -62,39 +81,9 @@ export class Pool extends TokenContract {
     this.checkZeroBalanceChange(forest);
   }
 
-  @method
-  async depositToken0(_amount: UInt64) {
-    _amount.assertGreaterThan(UInt64.zero, "Insufficient amount");
-    let _token0 = this.token0.getAndRequireEquals();
-    let _token1 = this.token1.getAndRequireEquals();
-
-    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
-
-    let simpleToken0 = new SimpleToken(_token0);
-
-    let senderPublicKey = this.sender.getUnconstrained();
-
-    await simpleToken0.transfer(senderPublicKey, this.address, _amount);
-
-  }
-
-  @method
-  async depositToken1(_amount: UInt64) {
-    _amount.assertGreaterThan(UInt64.zero, "Insufficient amount");
-    let _token0 = this.token0.getAndRequireEquals();
-    let _token1 = this.token1.getAndRequireEquals();
-
-    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
-
-    let simpleToken1 = new SimpleToken(_token1);
-
-    let senderPublicKey = this.sender.getUnconstrained();
-
-    await simpleToken1.transfer(senderPublicKey, this.address, _amount);
-  }
 
   @method.returns(UInt64)
-  async createFirstDeposit() {
+  async createFirstDeposit(_amount0: UInt64, _amount1: UInt64) {
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
 
@@ -103,20 +92,16 @@ export class Pool extends TokenContract {
     let _poolState = this.poolState.getAndRequireEquals();
     _poolState.init.assertFalse("Pool already inited");
 
+    let senderPublicKey = this.sender.getUnconstrained();
 
     let simpleToken0 = new SimpleToken(_token0);
     let simpleToken1 = new SimpleToken(_token1);
 
-    let account0 = new SimpleToken(this.address, simpleToken0.deriveTokenId());
-    let account1 = new SimpleToken(this.address, simpleToken1.deriveTokenId());
-
-    let _amount0 = account0.account.balance.getAndRequireEquals();
-    let _amount1 = account1.account.balance.getAndRequireEquals();
+    await simpleToken0.transfer(senderPublicKey, this.address, _amount0);
+    await simpleToken1.transfer(senderPublicKey, this.address, _amount1);
 
     _amount0.assertGreaterThan(UInt64.zero, "Insufficient amount 0");
     _amount1.assertGreaterThan(UInt64.zero, "Insufficient amount 1");
-
-    let senderPublicKey = this.sender.getUnconstrained();
 
     let liquidity = UInt64.zero;
 
@@ -131,11 +116,18 @@ export class Pool extends TokenContract {
     liquidity.assertGreaterThan(UInt64.zero, "Insufficient liquidity");
 
     // attribute minimun to address 0    
-    //this.internal.mint({ address: PublicKey.empty(), amount: minimunLiquidity });
+    offchainState.fields.liquidities.update(PublicKey.empty(), {
+      from: undefined,
+      to: new UInt64(minimunLiquidity),
+    });
     _poolState.totalSupply.add(minimunLiquidity);
 
+
     // attribute rest to user
-    this.internal.mint({ address: senderPublicKey, amount: liquidity });
+    offchainState.fields.liquidities.update(senderPublicKey, {
+      from: undefined,
+      to: liquidity,
+    });
     _poolState.totalSupply.add(liquidity);
 
     _poolState.init = Bool(true);
@@ -151,31 +143,20 @@ export class Pool extends TokenContract {
   @method
   async mintLiquidity() {
 
-    // let senderAccount = this.sender.getAndRequireSignature();
+    let senderAccount = this.sender.getAndRequireSignature();
 
-    // // type for the "accumulated output" of reduce -- the `stateType`
-    // let stateType = UInt64;
+    let userLiquidity = await offchainState.fields.liquidities.get(senderAccount);
 
-    // // example actions data
-    // let actions = this.reducer.getActions();
+    let tokenToMint = userLiquidity.orElse(0n);
+    tokenToMint.assertGreaterThan(UInt64.zero, "Nothing to mint");
 
-    // // state and actionState before applying actions
-    // let initial = UInt64.zero;
+    // mint liquidity amount to user account
+    this.internal.mint({ address: senderAccount, amount: tokenToMint });
 
-    // let tokenToMint: UInt64 = this.reducer.reduce(
-    //   actions,
-    //   stateType,
-    //   (state: UInt64, action: Liquidity) => Provable.if(action.minted.and(action.owner.equals(senderAccount)), state.sub(action.amount), state.add(action.amount)),
-    //   initial
-    // );
-
-    // tokenToMint.assertGreaterThan(UInt64.zero, "Nothing to mint");
-
-    // this.internal.mint({ address: senderAccount, amount: tokenToMint });
-
-    // let liquidityUser = new Liquidity({ owner: senderAccount, amount: tokenToMint, minted: Bool(true) });
-    // this.reducer.dispatch(liquidityUser);
-
+    offchainState.fields.liquidities.update(PublicKey.empty(), {
+      from: userLiquidity,
+      to: UInt64.zero,
+    });
   }
 
 }
