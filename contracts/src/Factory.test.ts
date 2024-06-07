@@ -29,7 +29,11 @@ describe('Add', () => {
     zkToken1: SimpleToken;
 
   beforeAll(async () => {
-    if (proofsEnabled) await Factory.compile();
+    if (proofsEnabled) {
+      await offchainState.compile();
+      await Factory.compile();
+      await Pool.compile();
+    }
   });
 
   beforeEach(async () => {
