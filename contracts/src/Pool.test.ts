@@ -9,16 +9,14 @@ describe('Pool', () => {
     beforeAll(async () => {
         const Local = await Mina.LocalBlockchain({ proofsEnabled: true });
         Mina.setActiveInstance(Local);
-        const [deployerAccount, senderAccount] = Local.testAccounts;
-        const deployerKey = deployerAccount.key;
-
-        const zkAppPrivateKey = PrivateKey.random();
-        const zkAppAddress = zkAppPrivateKey.toPublicKey();
-        const zkApp = new Pool(zkAppAddress);
+        let [sender, receiver, contractAccount, other] = Local.testAccounts;
+        const zkApp = new Pool(contractAccount);
 
         offchainState.setContractInstance(zkApp);
 
-        const Local2 = await Mina.LocalBlockchain({ proofsEnabled: true });
+        console.time('compile token');
+        const tokenKey = await SimpleToken.compile();
+        console.timeEnd('compile token');
         console.time('compile offchainState');
         const offKey = await offchainState.compile();
         console.timeEnd('compile offchainState');
@@ -28,13 +26,12 @@ describe('Pool', () => {
         console.log("key pool", key.verificationKey.data);
         console.log("key pool hash", key.verificationKey.hash.toBigInt());
 
-        const txn = await Mina.transaction(deployerAccount, async () => {
-            AccountUpdate.fundNewAccount(deployerAccount, 3);
+        const txn = await Mina.transaction(sender, async () => {
             await zkApp.deploy();
         });
         await txn.prove();
         // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
-        await txn.sign([deployerKey, zkAppPrivateKey,]).send();
+        await txn.sign([sender.key, contractAccount.key]).send();
 
     });
 
