@@ -10,6 +10,9 @@ export class PoolState extends Struct({
   init: Bool
 }) {
 
+  static empty(): PoolState {
+    return new PoolState({ reserve0: UInt64.zero, reserve1: UInt64.zero, totalSupply: UInt64.zero, init: Bool(false) });
+  }
 }
 
 export class Liquidity extends Struct({
@@ -90,10 +93,10 @@ export class Pool extends TokenContract {
     let _token0 = this.token0.getAndRequireEquals();
     let _token1 = this.token1.getAndRequireEquals();
     let poolState = await offchainState.fields.poolState.get();
+    let _poolState = poolState.orElse(PoolState.empty());
 
     _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
-    let _poolState = poolState.value;
     _poolState.init.assertFalse("Pool already inited");
 
     let senderPublicKey = this.sender.getUnconstrained();
