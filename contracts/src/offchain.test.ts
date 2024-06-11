@@ -7,6 +7,10 @@ import {
     UInt64,
     Experimental,
     State,
+    TokenContract,
+    AccountUpdateForest,
+    AccountUpdate,
+    PrivateKey,
 } from 'o1js';
 import assert from 'assert';
 
@@ -25,11 +29,20 @@ class StateProof extends offchainState.Proof { }
 
 // example contract that interacts with offchain state
 
-class ExampleContract extends SmartContract {
+class ExampleContract extends TokenContract {
+
+    init() {
+        super.init();
+    }
+
 
     @state(OffchainStateCommitments) offchainState = State(
         OffchainStateCommitments.empty()
     );
+
+    @method async approveBase(forest: AccountUpdateForest) {
+        this.checkZeroBalanceChange(forest);
+    }
 
     @method
     async createAccount(address: PublicKey, amountToMint: UInt64) {
@@ -97,7 +110,8 @@ const Local = await Mina.LocalBlockchain({ proofsEnabled });
 Mina.setActiveInstance(Local);
 
 let [sender, receiver, contractAccount, other] = Local.testAccounts;
-let contract = new ExampleContract(contractAccount);
+const zkAppPrivateKey = PrivateKey.random();
+let contract = new ExampleContract(zkAppPrivateKey.toPublicKey());
 offchainState.setContractInstance(contract);
 
 if (proofsEnabled) {
@@ -113,9 +127,10 @@ if (proofsEnabled) {
 
 console.time('deploy');
 await Mina.transaction(sender, async () => {
+    AccountUpdate.fundNewAccount(sender, 1);
     await contract.deploy();
 })
-    .sign([sender.key, contractAccount.key])
+    .sign([sender.key, zkAppPrivateKey])
     .prove()
     .send();
 console.timeEnd('deploy');
