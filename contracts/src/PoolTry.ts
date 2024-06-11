@@ -23,8 +23,10 @@ export class Liquidity extends Struct({
 export const offchainState = OffchainState(
   {
     liquidities: OffchainState.Map(PublicKey, UInt64),
-    poolState: OffchainState.Field(PoolState),
-    kLast: OffchainState.Field(Field)
+    kLast: OffchainState.Field(Field),
+    token0: OffchainState.Field(PublicKey),
+    token1: OffchainState.Field(PublicKey),
+    poolState: OffchainState.Field(PoolState)
   }
 );
 
@@ -59,14 +61,14 @@ export class SimpleToken extends TokenContract {
 /**
  * Pool contract who holds token
  */
-export class Pool extends TokenContract {
+export class PoolTry extends TokenContract {
   @state(OffchainStateCommitments) offchainState = State(
     OffchainStateCommitments.empty()
   );
 
   @state(PublicKey) token0 = State<PublicKey>();
   @state(PublicKey) token1 = State<PublicKey>();
-  //@state(PoolState) poolState = State<PoolState>();
+  @state(PoolState) poolState = State<PoolState>();
 
   init() {
     super.init();
@@ -85,9 +87,11 @@ export class Pool extends TokenContract {
 
   @method.returns(UInt64)
   async createFirstDeposit(_amount0: UInt64, _amount1: UInt64) {
-    let _token0 = this.token0.getAndRequireEquals();
-    let _token1 = this.token1.getAndRequireEquals();
+    let token0 = await offchainState.fields.token0.get();
+    let token1 = await offchainState.fields.token1.get();
     let poolState = await offchainState.fields.poolState.get();
+    let _token0 = token0.value;
+    let _token1 = token1.value;
 
     _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
