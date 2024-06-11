@@ -137,7 +137,7 @@ describe('Add', () => {
 
     let proof = await offchainState.createSettlementProof();
     const txn = await Mina.transaction(senderAccount, async () => {
-      zkPool.settle(proof);
+      await zkPool.settle(proof);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();

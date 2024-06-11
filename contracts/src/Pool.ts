@@ -82,6 +82,18 @@ export class Pool extends TokenContract {
     await offchainState.settle(proof);
   }
 
+  @method
+  async initTokenTest(_token0: PublicKey, _token1: PublicKey) {
+    let token0 = this.token0.getAndRequireEquals();
+    let token1 = this.token1.getAndRequireEquals();
+    token0.assertEquals(PublicKey.empty());
+    token1.assertEquals(PublicKey.empty());
+    _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
+
+    this.token0.set(_token0);
+    this.token1.set(_token1);
+  }
+
 
   @method async approveBase(forest: AccountUpdateForest) {
     this.checkZeroBalanceChange(forest);
