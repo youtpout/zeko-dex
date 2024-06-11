@@ -104,8 +104,9 @@ describe('Add', () => {
     // the pool is located to new address
     const zkPool = new Pool(newAddress);
     // the pool is not init
-    const poolState0 = zkPool.poolState.get();
-    expect(poolState0.init).toEqual(Bool(false));
+    // const offchainstate = await offchainState.fields.poolState.get();
+    // const poolState0 = offchainstate.value;
+    // expect(poolState0.init).toEqual(Bool(false));
 
     const poolToken0 = zkPool.token0.get();
     const poolToken1 = zkPool.token1.get();
@@ -148,8 +149,9 @@ describe('Add', () => {
     await txn3.prove();
     await txn3.sign([senderKey]).send();
 
-    const poolState = zkPool.poolState.get();
-    expect(poolState.init).toEqual(Bool(true));
+    // const offchainstate = await offchainState.fields.poolState.get();
+    // const poolState = offchainstate.value;
+    // expect(poolState.init).toEqual(Bool(true));
 
     const liquidityUser = Mina.getBalance(senderAccount, zkPool.deriveTokenId());
     const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);

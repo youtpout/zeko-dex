@@ -60,12 +60,14 @@ export class SimpleToken extends TokenContract {
  * Pool contract who holds token
  */
 export class Pool extends TokenContract {
+  @state(PublicKey) token0 = State<PublicKey>();
+  @state(PublicKey) token1 = State<PublicKey>();
+
   @state(OffchainStateCommitments) offchainState = State(
     OffchainStateCommitments.empty()
   );
 
-  @state(PublicKey) token0 = State<PublicKey>();
-  @state(PublicKey) token1 = State<PublicKey>();
+
   //@state(PoolState) poolState = State<PoolState>();
 
   init() {
