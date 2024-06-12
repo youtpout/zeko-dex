@@ -47,6 +47,14 @@ export class Liquidity extends Struct({
 
 }
 
+export const hashPairFunction = (_token0: PublicKey, _token1: PublicKey) => {
+    return Poseidon.hash(_token0.toFields().concat(_token1.toFields()));
+};
+
+export const hashLiqudityFunction = (_token0: PublicKey, _token1: PublicKey, _owner: PublicKey) => {
+    return Poseidon.hash(_token0.toFields().concat(_token1.toFields()).concat(_owner.toFields()));
+};
+
 
 export const offchainState = OffchainState(
     {
@@ -85,7 +93,7 @@ export class PoolManager extends TokenContract {
     async createPool(_newAccount: PublicKey, _token0: PublicKey, _token1: PublicKey) {
         _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
 
-        const hashPair = await this.hashPair(_token0, _token1);
+        const hashPair = await hashPairFunction(_token0, _token1);
 
         let poolState = await offchainState.fields.poolsState.get(hashPair);
         let poolStateValue = poolState.orElse(PoolState.empty());
@@ -112,7 +120,7 @@ export class PoolManager extends TokenContract {
     @method.returns(UInt64)
     async supplyLiquidity(_token0: PublicKey, _token1: PublicKey, _amount0: UInt64, _amount1: UInt64) {
         _token0.x.assertLessThan(_token1.x, "token 0 need to be lower than token1");
-        const hashPair = Poseidon.hash(_token0.toFields().concat(_token1.toFields()));
+        const hashPair = hashPairFunction(_token0, _token1);
 
         let poolState = await offchainState.fields.poolsState.get(hashPair);
         let poolStateValue = poolState.orElse(PoolState.empty());
@@ -149,7 +157,7 @@ export class PoolManager extends TokenContract {
 
 
         // attribute rest to user
-        let addressUser = Poseidon.hash(_token0.toFields().concat(_token1.toFields()).concat(senderPublicKey.toFields()));
+        let addressUser = hashLiqudityFunction(_token0, _token1, senderPublicKey);
         offchainState.fields.liquidities.update(addressUser, {
             from: undefined,
             to: liquidity
@@ -168,17 +176,5 @@ export class PoolManager extends TokenContract {
         return liquidity;
     }
 
-
-    @method.returns(Field)
-    async hashPair(token0: PublicKey, token1: PublicKey) {
-        token0.x.assertLessThan(token1.x, "token 0 need to be lower than token1");
-        return Poseidon.hash(token0.toFields().concat(token1.toFields()));
-    }
-
-    @method.returns(Field)
-    async hashLiquidity(token0: PublicKey, token1: PublicKey, owner: PublicKey) {
-        token0.x.assertLessThan(token1.x, "token 0 need to be lower than token1");
-        return Poseidon.hash(token0.toFields().concat(token1.toFields()).concat(owner.toFields()));
-    }
 
 }

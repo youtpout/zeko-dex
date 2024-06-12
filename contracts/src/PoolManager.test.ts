@@ -1,5 +1,5 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
-import { PoolManager, MINIMUN_LIQUIDITY, offchainState } from './PoolManager';
+import { PoolManager, MINIMUN_LIQUIDITY, offchainState, hashPairFunction } from './PoolManager';
 import { SimpleToken } from './SimpleToken';
 
 
@@ -89,7 +89,7 @@ describe('Add', () => {
 
     let amt = UInt64.from(10 * 10 ** 9);
     let newAddress = await createPool(zkToken0Address, zkToken1Address);
-    let hashPair = await zkApp.hashPair(zkToken0Address, zkToken1Address);
+    let hashPair = await hashPairFunction(zkToken0Address, zkToken1Address);
 
     expect(newAddress).toEqual(hashPair);
 
