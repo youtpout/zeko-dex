@@ -100,13 +100,19 @@ describe('Add', () => {
     await txn.prove();
     await txn.sign([senderKey]).send();
 
+    await mintToken();
+
+    let liquidity = UInt64.zero;
     const txn2 = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 4);
-      await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
+      AccountUpdate.fundNewAccount(senderAccount, 2);
+      liquidity = await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
     });
     console.log(txn2.toPretty());
     await txn2.prove();
     await txn2.sign([senderKey]).send();
+
+    const expected = amt.value.mul(amt.value).sqrt().sub(MINIMUN_LIQUIDITY);
+    expect(liquidity.value).toEqual(expected);
   });
 
   /*

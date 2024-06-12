@@ -52,7 +52,7 @@ export const offchainState = OffchainState(
     {
         numberPool: OffchainState.Field(UInt64),
         poolsState: OffchainState.Map(Field, PoolState),
-        liquidities: OffchainState.Map(Field, Liquidity)
+        liquidities: OffchainState.Map(Field, UInt64)
     }
 );
 
@@ -143,7 +143,7 @@ export class PoolManager extends TokenContract {
         let addressZero = Poseidon.hash(_token0.toFields().concat(_token1.toFields()).concat(PublicKey.empty().toFields()));
         offchainState.fields.liquidities.update(addressZero, {
             from: undefined,
-            to: new Liquidity({ amount: new UInt64(MINIMUN_LIQUIDITY), minted: Bool(false) })
+            to: new UInt64(MINIMUN_LIQUIDITY)
         });
         poolStateValue.totalSupply.add(MINIMUN_LIQUIDITY);
 
@@ -152,7 +152,7 @@ export class PoolManager extends TokenContract {
         let addressUser = Poseidon.hash(_token0.toFields().concat(_token1.toFields()).concat(senderPublicKey.toFields()));
         offchainState.fields.liquidities.update(addressUser, {
             from: undefined,
-            to: new Liquidity({ amount: new UInt64(liquidity), minted: Bool(false) })
+            to: liquidity
         });
         poolStateValue.totalSupply.add(liquidity);
 
@@ -165,7 +165,7 @@ export class PoolManager extends TokenContract {
             to: poolStateValue
         });
 
-        return UInt64.zero;
+        return liquidity;
     }
 
 
