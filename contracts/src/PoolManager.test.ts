@@ -107,7 +107,6 @@ describe('Add', () => {
       AccountUpdate.fundNewAccount(senderAccount, 2);
       liquidity = await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
     });
-    console.log(txn2.toPretty());
     await txn2.prove();
     await txn2.sign([senderKey]).send();
 
@@ -129,6 +128,18 @@ describe('Add', () => {
 
     const poolState = await zkApp.getPoolState(zkToken0Address, zkToken1Address);
     console.log('pool state', poolState.toJson());
+
+    let amountInWithFee: Field = amtIn.value.mul(995);
+    console.log("amountInWithFee", amountInWithFee.toString());
+    let numerator: Field = amountInWithFee.mul(amt.value);
+    console.log("numerator", numerator.toString());
+    let denominator: Field = amt.value.mul(1000).add(amountInWithFee);
+    console.log("denominator", denominator.toString());
+    let amountOutField: Field = numerator.div(denominator);
+    console.log("amountOut", amountOutField.toString());
+
+    let amount2: Field = Field(10000).div(Field(11));
+    console.log("amountOut", amount2.toString());
 
     const txn6 = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount, 1);

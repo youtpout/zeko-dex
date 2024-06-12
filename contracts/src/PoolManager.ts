@@ -208,12 +208,14 @@ export class PoolManager extends TokenContract {
         reserveOut.assertGreaterThan(_amountOutMin, "Insufficient reserve out");
 
 
-        // 0.5 % tax
-        let amountInWithFee = _amountIn.mul(995);
-        let numerator = amountInWithFee.mul(reserveOut);
-        let denominator = reserveIn.mul(1000).add(amountInWithFee);
-        let amountOut = numerator.div(denominator);
+        // 0.5 % tax, use value to convert Uint64 to field to prevent from uint64 overflow
+        let amountInWithFee = _amountIn.value.mul(995);
+        let numerator = amountInWithFee.mul(reserveOut.value);
+        let denominator = reserveIn.value.mul(1000).add(amountInWithFee);
+        let amountOutField = numerator.div(denominator);
+        amountOutField.assertLessThanOrEqual(UInt64.MAXINT().value, "Amount out too big");
 
+        let amountOut = UInt64.Unsafe.fromField(amountOutField);
         amountOut.assertGreaterThanOrEqual(_amountOutMin, "Insufficient amout out");
 
         let senderPublicKey = this.sender.getUnconstrained();
@@ -223,7 +225,7 @@ export class PoolManager extends TokenContract {
         // transfer from user to pool
         await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
         // transfer from pool to user
-        await simpleTokenOut.send({ to: senderPublicKey, amount: amountOut });
+        await simpleTokenOut.transfer(this.address, senderPublicKey, amountOut);
 
         // update reserve
         poolStateValue.reserve0 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0.add(_amountIn), poolStateValue.reserve0.sub(amountOut));
