@@ -12,10 +12,15 @@ export const MINIMUN_LIQUIDITY = 10 ** 3;
 
 export class Pair extends Struct({
     token0: PublicKey,
-    token1: PublicKey,
-    liquidityManager: PublicKey
+    token1: PublicKey
 }) {
+    hash(): Field {
+        return Poseidon.hash(this.token0.toFields().concat(this.token1.toFields()));
+    }
 
+    toFields(): Field[] {
+        return this.token0.toFields().concat(this.token1.toFields());
+    }
 }
 
 export class PoolState extends Struct({
@@ -38,21 +43,16 @@ export class PoolState extends Struct({
     }
 }
 
-
-
-export class Liquidity extends Struct({
-    amount: UInt64,
-    minted: Bool
-}) {
-
-}
-
 export const hashPairFunction = (_token0: PublicKey, _token1: PublicKey) => {
     return Poseidon.hash(_token0.toFields().concat(_token1.toFields()));
 };
 
 export const hashLiqudityFunction = (_token0: PublicKey, _token1: PublicKey, _owner: PublicKey) => {
     return Poseidon.hash(_token0.toFields().concat(_token1.toFields()).concat(_owner.toFields()));
+};
+
+export const orderToken = (_tokenIn: PublicKey, _tokenOut: PublicKey) => {
+    return Provable.if(_tokenIn.x.lessThan(_tokenOut.x), new Pair({ token0: _tokenIn, token1: _tokenOut }), new Pair({ token0: _tokenIn, token1: _tokenOut }));
 };
 
 
@@ -176,5 +176,53 @@ export class PoolManager extends TokenContract {
         return liquidity;
     }
 
+    @method.returns(UInt64)
+    async swapExactIn(_tokenIn: PublicKey, _tokenOut: PublicKey, _amountIn: UInt64, _amountOutMin: UInt64) {
+        _amountIn.assertGreaterThan(UInt64.zero, "Insufficient amount in");
+
+        // todo safety verification
+        let pair = orderToken(_tokenIn, _tokenOut);
+        let hashPair = pair.hash();
+
+        let poolState = await offchainState.fields.poolsState.get(hashPair);
+        let poolStateValue = poolState.orElse(PoolState.empty());
+        poolStateValue.hashPair().assertEquals(hashPair, "Pair not created");
+        poolStateValue.init.assertEquals(Bool(true), "This pair is not inited");
+
+        let reserveIn = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0, poolStateValue.reserve1);
+        let reserveOut = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve1, poolStateValue.reserve0);
+
+        reserveIn.assertGreaterThan(_amountIn, "Insufficient reserve in");
+        reserveOut.assertGreaterThan(_amountOutMin, "Insufficient reserve out");
+
+
+        // 0.5 % tax
+        let amountInWithFee = _amountIn.mul(995);
+        let numerator = amountInWithFee.mul(reserveOut);
+        let denominator = reserveIn.mul(1000).add(amountInWithFee);
+        let amountOut = numerator.div(denominator);
+
+        amountOut.assertGreaterThanOrEqual(_amountOutMin, "Insufficient amout out");
+
+        let senderPublicKey = this.sender.getUnconstrained();
+        let simpleTokenIn = new SimpleToken(_tokenIn);
+        let simpleTokenOut = new SimpleToken(_tokenOut);
+
+        // transfer from user to pool
+        await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
+        // transfer from pool to user
+        await simpleTokenOut.send({ to: senderPublicKey, amount: amountOut });
+
+        // update reserve
+        poolStateValue.reserve0 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0.add(_amountIn), poolStateValue.reserve0.sub(amountOut));
+        poolStateValue.reserve1 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve1.sub(amountOut), poolStateValue.reserve1.add(_amountIn));
+
+        offchainState.fields.poolsState.update(hashPair, {
+            from: poolState,
+            to: poolStateValue
+        });
+
+        return amountOut;
+    }
 
 }
