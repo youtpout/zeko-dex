@@ -41,6 +41,19 @@ export class PoolState extends Struct({
     hashPair(): Field {
         return Poseidon.hash(this.token0.toFields().concat(this.token1.toFields()));
     }
+
+    toJson(): string {
+        return JSON.stringify({
+            token0: this.token0.toJSON(),
+            token1: this.token1.toJSON(),
+            reserve0: this.reserve0.toJSON(),
+            reserve1: this.reserve1.toJSON(),
+            totalSupply: this.totalSupply.toJSON(),
+            init: this.init.toJSON(),
+            kLast: this.kLast.toJSON(),
+            liquidityManager: this.liquidityManager.toJSON()
+        });
+    }
 }
 
 export const hashPairFunction = (_token0: PublicKey, _token1: PublicKey) => {
@@ -153,8 +166,6 @@ export class PoolManager extends TokenContract {
             from: undefined,
             to: new UInt64(MINIMUN_LIQUIDITY)
         });
-        poolStateValue.totalSupply.add(MINIMUN_LIQUIDITY);
-
 
         // attribute rest to user
         let addressUser = hashLiqudityFunction(_token0, _token1, senderPublicKey);
@@ -162,11 +173,12 @@ export class PoolManager extends TokenContract {
             from: undefined,
             to: liquidity
         });
-        poolStateValue.totalSupply.add(liquidity);
+
+        poolStateValue.totalSupply = UInt64.from(MINIMUN_LIQUIDITY).add(liquidity);
 
         poolStateValue.init = Bool(true);
-        poolStateValue.reserve0.add(_amount0);
-        poolStateValue.reserve1.add(_amount1);
+        poolStateValue.reserve0 = _amount0;
+        poolStateValue.reserve1 = _amount1;
 
         offchainState.fields.poolsState.update(hashPair, {
             from: poolState,
@@ -223,6 +235,12 @@ export class PoolManager extends TokenContract {
         });
 
         return amountOut;
+    }
+
+    @method.returns(PoolState)
+    async getPoolState(token0: PublicKey, token1: PublicKey) {
+        const hashPair = hashPairFunction(token0, token1);
+        return (await offchainState.fields.poolsState.get(hashPair)).orElse(PoolState.empty());
     }
 
 }

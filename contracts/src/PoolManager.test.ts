@@ -113,6 +113,34 @@ describe('Add', () => {
 
     const expected = amt.value.mul(amt.value).sqrt().sub(MINIMUN_LIQUIDITY);
     expect(liquidity.value).toEqual(expected);
+
+    await offchainStateProve();
+
+    // swap token
+    const txn5 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkToken0.mintTo(deployerAccount, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn5.prove();
+    await txn5.sign([senderKey, zkToken0PrivateKey]).send();
+
+    let amtIn = UInt64.from(5 * 10 ** 9);
+    let amtOutMin = UInt64.from(4 * 10 ** 9);
+
+    const poolState = await zkApp.getPoolState(zkToken0Address, zkToken1Address);
+    console.log('pool state', poolState.toJson());
+
+    const txn6 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
+      await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
+    });
+    await txn6.prove();
+    await txn6.sign([senderKey, deployerKey]).send();
+
+    const balanceToken1 = Mina.getBalance(deployerAccount, zkToken1.deriveTokenId());
+    console.log("balance 1", balanceToken1.toString());
+    expect(balanceToken1.greaterThanOrEqual(amtOutMin)).toEqual(Bool(true));
+
   });
 
   /*
@@ -238,6 +266,16 @@ describe('Add', () => {
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
+  }
+
+  async function offchainStateProve() {
+    let proof = await offchainState.createSettlementProof();
+    const txn = await Mina.transaction(senderAccount, async () => {
+      await zkApp.settle(proof);
+    });
+    await txn.prove();
+    await txn.sign([senderKey]).send();
+
   }
 
   async function createPool(token0: PublicKey, token1: PublicKey): Promise<Field> {
