@@ -138,7 +138,7 @@ describe('Add', () => {
     let amountOutField: Field = numerator.div(denominator);
     console.log("amountOut", amountOutField.toString());
 
-    let amount2: Field = Field(10000).div(Field(11));
+    let amount2: Field = Field(49750000000000000000000n).div(Field(14975000000000n));
     console.log("amountOut", amount2.toString());
 
     const txn6 = await Mina.transaction(senderAccount, async () => {
