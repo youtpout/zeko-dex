@@ -250,7 +250,7 @@ export class PoolManager extends TokenContract {
         await tranferOut.balance.subInPlace(amountOut);
         await simpleTokenOut.approve(acc.self);
         await acc.balance.addInPlace(amountOut);
-        await simpleTokenOut.transfer(tranferOut.self, acc.self, amountOut);
+        await simpleTokenOut.transfer(tranferOut.self, senderPublicKey, amountOut);
         // await tranferOut.send({ to: senderPublicKey, amount: amountOut });
         //await tranferOut2.balance.addInPlace(amountOut);
 
