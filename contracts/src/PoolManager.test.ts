@@ -133,7 +133,7 @@ describe('Add', () => {
     console.log('pool state', poolState.toJson());
 
     const txn6 = await Mina.transaction(deployerAccount, async () => {
-      AccountUpdate.fundNewAccount(deployerAccount, 1);
+      //AccountUpdate.fundNewAccount(deployerAccount, 1);
       const amount = await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
       //await zkToken1.transfer(zkAppAddress, deployerAccount, amount);
     });

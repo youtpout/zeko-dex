@@ -221,10 +221,9 @@ export class PoolManager extends TokenContract {
         let numerator = amountInWithFee.mul(reserveOut.value);
         let denominator = reserveIn.value.mul(1000).add(amountInWithFee);
 
-        let amountOutField = Field(0);
-        Provable.asProver(() => {
+        let amountOutField = Provable.witness(Field, () => {
             let amountBigInt = Field.toValue(numerator) / Field.toValue(denominator);
-            amountOutField = Field(amountBigInt);
+            return Field(amountBigInt);
         });
         amountOutField.assertLessThanOrEqual(UInt64.MAXINT().value, "Amount out too big");
 
@@ -250,7 +249,7 @@ export class PoolManager extends TokenContract {
         await tranferOut.balance.subInPlace(amountOut);
         await simpleTokenOut.approve(acc.self);
         await acc.balance.addInPlace(amountOut);
-        await simpleTokenOut.transfer(tranferOut.self, senderPublicKey, amountOut);
+        //await simpleTokenOut.transfer(tranferOut.self, senderPublicKey, amountOut);
         // await tranferOut.send({ to: senderPublicKey, amount: amountOut });
         //await tranferOut2.balance.addInPlace(amountOut);
 
