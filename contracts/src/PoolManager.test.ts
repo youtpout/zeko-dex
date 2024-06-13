@@ -124,29 +124,22 @@ describe('Add', () => {
     await txn5.sign([senderKey, zkToken0PrivateKey]).send();
 
     let amtIn = UInt64.from(5 * 10 ** 9);
-    let amtOutMin = UInt64.from(4 * 10 ** 9);
+    let amtOutMin = UInt64.from(1 * 10 ** 9);
+
+    const balanceApp = Mina.getBalance(zkAppAddress, zkToken1.deriveTokenId());
+    console.log("balance 1", balanceApp.toString());
 
     const poolState = await zkApp.getPoolState(zkToken0Address, zkToken1Address);
     console.log('pool state', poolState.toJson());
 
-    let amountInWithFee: Field = amtIn.value.mul(995);
-    console.log("amountInWithFee", amountInWithFee.toString());
-    let numerator: Field = amountInWithFee.mul(amt.value);
-    console.log("numerator", numerator.toString());
-    let denominator: Field = amt.value.mul(1000).add(amountInWithFee);
-    console.log("denominator", denominator.toString());
-    let amountOutField: Field = numerator.div(denominator);
-    console.log("amountOut", amountOutField.toString());
-
-    let amount2: Field = Field(49750000000000000000000n).div(Field(14975000000000n));
-    console.log("amountOut", amount2.toString());
-
-    const txn6 = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 1);
-      await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
+    const txn6 = await Mina.transaction(deployerAccount, async () => {
+      //AccountUpdate.fundNewAccount(deployerAccount, 1);
+      const amount = await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
+      //await zkToken1.transfer(zkAppAddress, deployerAccount, amount);
     });
+    console.log(txn6.toPretty());
     await txn6.prove();
-    await txn6.sign([senderKey, deployerKey]).send();
+    await txn6.sign([deployerKey]).send();
 
     const balanceToken1 = Mina.getBalance(deployerAccount, zkToken1.deriveTokenId());
     console.log("balance 1", balanceToken1.toString());

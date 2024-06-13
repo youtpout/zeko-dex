@@ -6,13 +6,11 @@ export class SimpleToken extends TokenContract {
   init() {
     super.init();
 
-    // make account non-upgradable forever
+    // permission to be sent from zkapp
     this.account.permissions.set({
       ...Permissions.default(),
-      setVerificationKey:
-        Permissions.VerificationKey.impossibleDuringCurrentVersion(),
-      setPermissions: Permissions.impossible(),
-      access: Permissions.proofOrSignature(),
+      access: Permissions.proof(),
+      send: Permissions.proofOrSignature(),
     });
   }
 
