@@ -95,7 +95,8 @@ export class PoolManager extends TokenContract {
             editState: Permissions.proofOrSignature(),
             editActionState: Permissions.proofOrSignature(),
             send: Permissions.proofOrSignature(),
-            incrementNonce: Permissions.proofOrSignature()
+            incrementNonce: Permissions.proofOrSignature(),
+
         });
     }
 
@@ -229,7 +230,7 @@ export class PoolManager extends TokenContract {
 
         // check if the operation is correct  num - 1 <= numCalc <= num + 1
         amountOutField.add(1).mul(denominator).assertGreaterThanOrEqual(numerator, "Incorrect operation result");
-        amountOutField.sub(1).mul(denominator).assertLessThanOrEqual(numerator.sub(1), "Incorrect operation result");
+        amountOutField.sub(1).mul(denominator).assertLessThanOrEqual(numerator, "Incorrect operation result");
 
         let amountOut = UInt64.Unsafe.fromField(amountOutField);
         amountOut.assertGreaterThanOrEqual(_amountOutMin, "Insufficient amout out");
@@ -238,14 +239,20 @@ export class PoolManager extends TokenContract {
         let simpleTokenIn = new SimpleToken(_tokenIn);
         let simpleTokenOut = new SimpleToken(_tokenOut);
         let tranferOut = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
+        //let tranferOut2 = new SimpleToken(senderPublicKey, simpleTokenOut.deriveTokenId());
 
         // transfer from user to pool
         await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
         // transfer from pool to user
         // await simpleTokenOut.transfer(this.self, senderPublicKey, amountOut);
-        //let acc = await AccountUpdate.createSigned(senderPublicKey, simpleTokenOut.deriveTokenId());
-        //await tranferOut.balance.subInPlace(amountOut);
-        //await tranferOut.transfer(this.self, senderPublicKey, amountOut);
+        let acc = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
+        //await simpleTokenOut.approve(acc);
+        await tranferOut.balance.subInPlace(amountOut);
+        await simpleTokenOut.approve(acc.self);
+        await acc.balance.addInPlace(amountOut);
+        await simpleTokenOut.transfer(tranferOut.self, acc.self, amountOut);
+        // await tranferOut.send({ to: senderPublicKey, amount: amountOut });
+        //await tranferOut2.balance.addInPlace(amountOut);
 
         // update reserve
         poolStateValue.reserve0 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0.add(_amountIn), poolStateValue.reserve0.sub(amountOut));
