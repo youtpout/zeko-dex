@@ -1,6 +1,6 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import { PoolManager, MINIMUN_LIQUIDITY, offchainState, hashPairFunction } from './PoolManager';
-import { SimpleToken } from './SimpleToken';
+import { SimpleToken, DexTokenHolder } from './SimpleToken';
 
 
 /*
@@ -25,7 +25,8 @@ describe('Add', () => {
     zkToken0: SimpleToken,
     zkToken1Address: PublicKey,
     zkToken1PrivateKey: PrivateKey,
-    zkToken1: SimpleToken;
+    zkToken1: SimpleToken,
+    dexTokenHolder1: DexTokenHolder;
 
   beforeAll(async () => {
     if (proofsEnabled) {
@@ -73,6 +74,16 @@ describe('Add', () => {
     await txn.prove();
     // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
     await txn.sign([deployerKey, zkAppPrivateKey, zkToken0PrivateKey, zkToken1PrivateKey]).send();
+
+    dexTokenHolder1 = new DexTokenHolder(zkAppAddress, zkToken1.deriveTokenId());
+    const txn1 = await Mina.transaction(deployerAccount, async () => {
+      AccountUpdate.fundNewAccount(deployerAccount, 1);
+      await dexTokenHolder1.deploy();
+      await zkToken1.approveAccountUpdate(dexTokenHolder1.self);
+    });
+    await txn1.prove();
+    // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
+    await txn1.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
   it('generates and deploys the `PoolManager` smart contract', async () => {
@@ -104,7 +115,7 @@ describe('Add', () => {
 
     let liquidity = UInt64.zero;
     const txn2 = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount, 2);
+      AccountUpdate.fundNewAccount(senderAccount, 1);
       liquidity = await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
     });
     await txn2.prove();
@@ -133,7 +144,7 @@ describe('Add', () => {
     console.log('pool state', poolState.toJson());
 
     const txn6 = await Mina.transaction(deployerAccount, async () => {
-      //AccountUpdate.fundNewAccount(deployerAccount, 1);
+      AccountUpdate.fundNewAccount(deployerAccount, 1);
       const amount = await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
       //await zkToken1.transfer(zkAppAddress, deployerAccount, amount);
     });
