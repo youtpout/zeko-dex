@@ -123,6 +123,23 @@ export class PoolManager extends TokenContract {
         poolStateValue.token0 = _token0;
         poolStateValue.token1 = _token1;
 
+        let token1 = new SimpleToken(_token1);
+
+        const update = AccountUpdate.createSigned(_newAccount, this.deriveTokenId());
+        update.body.update.verificationKey = token1.self.update.verificationKey;
+        update.body.update.permissions = {
+            isSome: Bool(true),
+            value: {
+                ...Permissions.default(),
+                setVerificationKey: {
+                    auth: Permissions.impossible(),
+                    txnVersion: TransactionVersion.current()
+                },
+                editState: Permissions.proof()
+            },
+        };
+
+
         offchainState.fields.poolsState.update(hashPair, {
             from: undefined,
             to: poolStateValue

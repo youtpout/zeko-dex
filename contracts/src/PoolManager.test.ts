@@ -299,6 +299,7 @@ describe('Add', () => {
     let newAddress = Field(0);
     // register pool
     const txn0 = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount, 1);
       newAddress = await zkApp.createPool(newAccount.toPublicKey(), token0, token1);
     });
     await txn0.prove();
