@@ -1,6 +1,6 @@
 import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert, fetchAccount, MerkleList, TransactionVersion, Experimental } from 'o1js';
 import { Pool } from './Pool';
-import { DexTokenHolder, SimpleToken } from './SimpleToken';
+import { SimpleToken } from './SimpleToken';
 
 
 const { OffchainState, OffchainStateCommitments } = Experimental;
@@ -241,9 +241,9 @@ export class PoolManager extends TokenContract {
         // transfer from user to pool
         //await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
         // transfer from pool to user
-        let dexOut = new DexTokenHolder(this.address, simpleTokenOut.deriveTokenId());
-        let dy = await dexOut.swap(amountOut);
-        await simpleTokenOut.transfer(dexOut.self, senderPublicKey, dy);
+        let dexOut = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
+        let dy = await dexOut.transferAway(amountOut);
+        await simpleTokenOut.transfer(dexOut.self, senderPublicKey, amountOut);
 
         // update reserve
         poolStateValue.reserve0 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0.add(_amountIn), poolStateValue.reserve0.sub(amountOut));
