@@ -139,6 +139,8 @@ export class PoolManager extends TokenContract {
             },
         };
 
+        poolStateValue.liquidityManager = _newAccount;
+
 
         offchainState.fields.poolsState.update(hashPair, {
             from: undefined,
