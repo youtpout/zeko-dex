@@ -88,9 +88,6 @@ describe('Add', () => {
 
   it('generates and deploys the `PoolManager` smart contract', async () => {
     await localDeploy();
-    // const num = await offchainState.fields.numberPool.get();
-    // const numValue = num.orElse(0n);
-    //expect(numValue).toEqual(UInt64.zero);
   });
 
 
@@ -146,7 +143,6 @@ describe('Add', () => {
     const txn6 = await Mina.transaction(deployerAccount, async () => {
       AccountUpdate.fundNewAccount(deployerAccount, 1);
       const amount = await zkApp.swapExactIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
-      //await zkToken1.transfer(zkAppAddress, deployerAccount, amount);
     });
     console.log(txn6.toPretty());
     await txn6.prove();
@@ -157,103 +153,6 @@ describe('Add', () => {
     expect(balanceToken1.greaterThanOrEqual(amtOutMin)).toEqual(Bool(true));
 
   });
-
-  /*
-    it('deposit liquidity', async () => {
-      await localDeploy();
-      let amt = UInt64.from(10 * 10 ** 9);
-      let newAddress = await createPool(zkToken0Address, zkToken1Address);
-  
-      // the pool is located to new address
-      const zkPool = new Pool(newAddress);
-      offchainState.setContractInstance(zkPool);
-  
-      await mintToken();
-  
-      const txn2 = await Mina.transaction(senderAccount, async () => {
-        AccountUpdate.fundNewAccount(senderAccount, 2);
-        await zkPool.createFirstDeposit(amt, amt);
-      });
-      await txn2.prove();
-      await txn2.sign([senderKey]).send();
-  
-      let proof = await offchainState.createSettlementProof();
-      const txn = await Mina.transaction(senderAccount, async () => {
-        await zkPool.settle(proof);
-      });
-      await txn.prove();
-      await txn.sign([senderKey]).send();
-  
-      const txn3 = await Mina.transaction(senderAccount, async () => {
-        AccountUpdate.fundNewAccount(senderAccount, 1);
-        await zkPool.mintLiquidity();
-      });
-      await txn3.prove();
-      await txn3.sign([senderKey]).send();
-  
-      // const offchainstate = await offchainState.fields.poolState.get();
-      // const poolState = offchainstate.value;
-      // expect(poolState.init).toEqual(Bool(true));
-  
-      const liquidityUser = Mina.getBalance(senderAccount, zkPool.deriveTokenId());
-      const expected = amt.value.mul(amt.value).sqrt().sub(minimunLiquidity);
-      expect(liquidityUser.value).toEqual(expected);
-  
-    });
-  
-  
-    it('deploy twice', async () => {
-  
-      await localDeploy();
-  
-      const newAccount = PrivateKey.random();
-      let newAddress = PublicKey.empty();
-  
-      const newAccount2 = PrivateKey.random();
-      let newAddress2 = PublicKey.empty();
-  
-      // register pool
-      const txn00 = await Mina.transaction(senderAccount, async () => {
-        AccountUpdate.fundNewAccount(senderAccount, 1);
-        newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken0Address, zkToken1Address);
-      });
-      await txn00.prove();
-      await txn00.sign([senderKey, newAccount]).send();
-  
-  
-      await expect(Mina.transaction(senderAccount, async () => {
-        AccountUpdate.fundNewAccount(senderAccount, 1);
-        newAddress = await zkApp.createPool(newAccount2.toPublicKey(), zkToken0Address, zkToken1Address);
-      })).rejects.toThrow("Pool already created");
-  
-  
-    });
-  
-    it('deploy with same account', async () => {
-  
-      await localDeploy();
-  
-      const newAccount = PrivateKey.random();
-      let newAddress = PublicKey.empty();
-  
-      // register pool
-      const txn00 = await Mina.transaction(senderAccount, async () => {
-        AccountUpdate.fundNewAccount(senderAccount, 1);
-        newAddress = await zkApp.createPool(newAccount.toPublicKey(), zkToken0Address, zkToken1Address);
-      });
-      await txn00.prove();
-      await txn00.sign([senderKey, newAccount]).send();
-  
-  
-      const txn1 = await Mina.transaction(senderAccount, async () => {
-        newAddress = await zkApp.createPool(newAccount.toPublicKey(), PublicKey.empty(), zkToken1Address);
-      });
-      await txn1.prove();
-      await expect(txn1.sign([senderKey, newAccount]).send()).rejects.toThrow();
-  
-  
-    });
-  */
 
   async function mintToken() {
     // update transaction

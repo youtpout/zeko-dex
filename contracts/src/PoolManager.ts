@@ -258,7 +258,7 @@ export class PoolManager extends TokenContract {
         let simpleTokenOut = new SimpleToken(_tokenOut);
 
         // transfer from user to pool
-        //await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
+        await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
         // transfer from pool to user
         let dexOut = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
         let dy = await dexOut.transferAway(amountOut);
