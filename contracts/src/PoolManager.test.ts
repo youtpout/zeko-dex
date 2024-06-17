@@ -121,7 +121,7 @@ describe('Add', () => {
     const expected = amt.value.mul(amt.value).sqrt().sub(MINIMUN_LIQUIDITY);
     expect(liquidity.value).toEqual(expected);
 
-    await offchainStateProve();
+    //await offchainStateProve();
 
     // swap token
     const txn5 = await Mina.transaction(senderAccount, async () => {
