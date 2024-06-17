@@ -134,6 +134,19 @@ describe('Add', () => {
     let amtIn = UInt64.from(5 * 10 ** 9);
     let amtOutMin = UInt64.from(1 * 10 ** 9);
 
+    // deposit before swap
+    const txn51 = await Mina.transaction(deployerAccount, async () => {
+      await zkApp.depositToken(zkToken0Address, amtIn);
+    });
+    console.log(txn51.toPretty());
+    await txn51.prove();
+    await txn51.sign([deployerKey]).send();
+
+    await offchainStateProve();
+
+    const deposit = await zkApp.getDeposit(deployerAccount, zkToken0Address);
+    console.log("deposit amount", deposit.toString());
+
     const balanceApp = Mina.getBalance(zkAppAddress, zkToken1.deriveTokenId());
     console.log("balance 1", balanceApp.toString());
 

@@ -68,12 +68,19 @@ export const orderToken = (_tokenIn: PublicKey, _tokenOut: PublicKey) => {
     return Provable.if(_tokenIn.x.lessThan(_tokenOut.x), new Pair({ token0: _tokenIn, token1: _tokenOut }), new Pair({ token0: _tokenIn, token1: _tokenOut }));
 };
 
+export const hashDepositKey = (owner: PublicKey, token: PublicKey) => {
+    return Poseidon.hash(owner.toFields().concat(token.toFields()));
+};
+
+
+
 
 export const offchainState = OffchainState(
     {
         numberPool: OffchainState.Field(UInt64),
         poolsState: OffchainState.Map(Field, PoolState),
-        liquidities: OffchainState.Map(Field, UInt64)
+        liquidities: OffchainState.Map(Field, UInt64),
+        deposits: OffchainState.Map(Field, UInt64)
     }
 );
 
@@ -108,6 +115,25 @@ export class PoolManager extends TokenContract {
     @method async approveBase(forest: AccountUpdateForest) {
         this.checkZeroBalanceChange(forest);
     }
+
+    /// Due to account update limit, the user need to deposit token befor swap   
+    @method
+    async depositToken(token: PublicKey, amount: UInt64) {
+        // need signature to be transfered, so didn't need to check now
+        let senderPublicKey = this.sender.getUnconstrained();
+        let key = hashDepositKey(senderPublicKey, token);
+
+        let actualDeposit = await offchainState.fields.deposits.get(key)
+        let depositValue = actualDeposit.orElse(UInt64.zero);
+        let simpleToken = new SimpleToken(token);
+        await simpleToken.transfer(senderPublicKey, this.address, amount);
+
+        offchainState.fields.deposits.update(key, {
+            from: actualDeposit,
+            to: depositValue.add(amount)
+        });
+    }
+
 
 
     @method.returns(Field)
@@ -223,6 +249,20 @@ export class PoolManager extends TokenContract {
         let pair = orderToken(_tokenIn, _tokenOut);
         let hashPair = pair.hash();
 
+        let senderPublicKey = this.sender.getAndRequireSignature();
+
+        // check if the user deposit suffisent amount
+        let keyDeposit = hashDepositKey(senderPublicKey, _tokenIn);
+        let actualDeposit = await offchainState.fields.deposits.get(keyDeposit)
+        let depositValue = actualDeposit.orElse(UInt64.zero);
+        depositValue.assertGreaterThanOrEqual(_amountIn, "Insufficient deposit balance");
+
+        // deduct amountin from user deposit
+        offchainState.fields.deposits.update(keyDeposit, {
+            from: actualDeposit,
+            to: depositValue.sub(_amountIn)
+        });
+
         let poolState = await offchainState.fields.poolsState.get(hashPair);
         let poolStateValue = poolState.orElse(PoolState.empty());
         poolStateValue.hashPair().assertEquals(hashPair, "Pair not created");
@@ -253,15 +293,11 @@ export class PoolManager extends TokenContract {
         let amountOut = UInt64.Unsafe.fromField(amountOutField);
         amountOut.assertGreaterThanOrEqual(_amountOutMin, "Insufficient amout out");
 
-        let senderPublicKey = this.sender.getUnconstrained();
-        let simpleTokenIn = new SimpleToken(_tokenIn);
         let simpleTokenOut = new SimpleToken(_tokenOut);
 
-        // transfer from user to pool
-        await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
-        // transfer from pool to user
+        // transfer from pool to user, the already transfer to the pool before
         let dexOut = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
-        let dy = await dexOut.transferAway(amountOut);
+        await dexOut.transferAway(amountOut);
         await simpleTokenOut.transfer(dexOut.self, senderPublicKey, amountOut);
 
         // update reserve
@@ -280,6 +316,14 @@ export class PoolManager extends TokenContract {
     async getPoolState(token0: PublicKey, token1: PublicKey) {
         const hashPair = hashPairFunction(token0, token1);
         return (await offchainState.fields.poolsState.get(hashPair)).orElse(PoolState.empty());
+    }
+
+    @method.returns(UInt64)
+    async getDeposit(owner: PublicKey, token: PublicKey) {
+        const key = hashDepositKey(owner, token);
+        let actualDeposit = await offchainState.fields.deposits.get(key)
+        let depositValue = actualDeposit.orElse(UInt64.zero);
+        return depositValue;
     }
 
 }
