@@ -1,8 +1,4 @@
 import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer, Account, Experimental, Option, Int64 } from 'o1js';
-import { PoolManager } from './PoolManager';
-
-
-class UInt64x2 extends Struct([UInt64, UInt64]) { }
 
 export class SimpleToken extends TokenContract {
   init() {

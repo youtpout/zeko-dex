@@ -10,22 +10,22 @@
  *
  * To run locally:
  * Build the project: `$ npm run build`
- * Run with node:     `$ node build/src/interact.js <deployAlias>`.
+ * Run with node:     `$ node build/src/deploy.js`.
  */
 import fs from 'fs/promises';
-import { Mina, NetworkId, PrivateKey } from 'o1js';
-import { SimpleToken } from './SimpleToken.js';
+import { AccountUpdate, Mina, NetworkId, PrivateKey } from 'o1js';
+import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from './index.js';
 
 // check command line arg
-let deployAlias = process.argv[2];
+let deployAlias = "pool-manager";
 if (!deployAlias)
     throw Error(`Missing <deployAlias> argument.
 
 Usage:
-node build/src/interact.js <deployAlias>
+node build/src/deploy.js
 `);
 Error.stackTraceLimit = 1000;
-const DEFAULT_NETWORK_ID = 'testnet';
+const DEFAULT_NETWORK_ID = 'zeko';
 
 // parse config and private key from file
 type Config = {
@@ -48,11 +48,20 @@ let feepayerKeysBase58: { privateKey: string; publicKey: string } = JSON.parse(
 );
 
 let zkAppKeysBase58: { privateKey: string; publicKey: string } = JSON.parse(
-    await fs.readFile(config.keyPath, 'utf8')
+    await fs.readFile("keys/pool-manager.json", 'utf8')
+);
+let zkAppToken0Base58: { privateKey: string; publicKey: string } = JSON.parse(
+    await fs.readFile("keys/token0.json", 'utf8')
+);
+let zkAppToken1Base58: { privateKey: string; publicKey: string } = JSON.parse(
+    await fs.readFile("keys/token1.json", 'utf8')
 );
 
 let feepayerKey = PrivateKey.fromBase58(feepayerKeysBase58.privateKey);
 let zkAppKey = PrivateKey.fromBase58(zkAppKeysBase58.privateKey);
+let zkToken0PrivateKey = PrivateKey.fromBase58(zkAppToken0Base58.privateKey);
+let zkToken1PrivateKey = PrivateKey.fromBase58(zkAppToken1Base58.privateKey);
+
 
 // set up Mina instance and contract we interact with
 const Network = Mina.Network({
@@ -61,16 +70,29 @@ const Network = Mina.Network({
     networkId: (config.networkId ?? DEFAULT_NETWORK_ID) as NetworkId,
     mina: config.url,
 });
+console.log("network", config.url);
 // const Network = Mina.Network(config.url);
 const fee = Number(config.fee) * 1e9; // in nanomina (1 billion = 1.0 mina)
 Mina.setActiveInstance(Network);
 let feepayerAddress = feepayerKey.toPublicKey();
 let zkAppAddress = zkAppKey.toPublicKey();
-let zkApp = new SimpleToken(zkAppAddress);
+let zkApp = new PoolManager(zkAppAddress);
+let zkToken0Address = zkToken0PrivateKey.toPublicKey();
+let zkToken0 = new SimpleToken(zkToken0Address);
+let zkToken1Address = zkToken0PrivateKey.toPublicKey();
+let zkToken1 = new SimpleToken(zkToken1Address);
+
+offchainState.setContractInstance(zkApp);
+
+let dexTokenHolder0 = new DexTokenHolder(zkAppAddress, zkToken0.deriveTokenId());
+let dexTokenHolder1 = new DexTokenHolder(zkAppAddress, zkToken1.deriveTokenId());
 
 // compile the contract to create prover keys
 console.log('compile the contract...');
+await offchainState.compile();
 await SimpleToken.compile();
+await DexTokenHolder.compile();
+await PoolManager.compile();
 
 try {
     // call update() and send transaction
@@ -78,13 +100,16 @@ try {
     let tx = await Mina.transaction(
         { sender: feepayerAddress, fee },
         async () => {
-            //await zkApp.update();
+            AccountUpdate.fundNewAccount(feepayerAddress, 1);
+            await zkApp.deploy();
+            // await zkToken0.deploy();
+            // await zkToken1.deploy();
         }
     );
     await tx.prove();
 
     console.log('send transaction...');
-    const sentTx = await tx.sign([feepayerKey]).send();
+    const sentTx = await tx.sign([feepayerKey, zkAppKey, zkToken0PrivateKey, zkToken1PrivateKey]).send();
     if (sentTx.status === 'pending') {
         console.log(
             '\nSuccess! Update transaction sent.\n' +

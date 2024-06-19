@@ -1,6 +1,5 @@
 import { Field, SmartContract, state, Permissions, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Poseidon, VerificationKey, Reducer, Account, assert, fetchAccount, MerkleList, TransactionVersion, Experimental } from 'o1js';
-import { Pool } from './Pool';
-import { SimpleToken } from './SimpleToken';
+import { SimpleToken } from './index.js';
 
 
 const { OffchainState, OffchainStateCommitments } = Experimental;

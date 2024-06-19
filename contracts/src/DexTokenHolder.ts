@@ -1,6 +1,5 @@
 import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer, Account, Experimental, Option, Int64 } from 'o1js';
-import { PoolManager } from './PoolManager';
-import { SimpleToken } from './SimpleToken';
+import { SimpleToken } from './index.js';
 
 export class DexTokenHolder extends SmartContract {
 
