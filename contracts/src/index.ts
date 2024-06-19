@@ -1,3 +1,4 @@
-import { Add } from './Add.js';
+import { PoolManager } from './PoolManager.js';
+import { SimpleToken } from './SimpleToken.js';
 
-export { Add };
+export { PoolManager, SimpleToken };
