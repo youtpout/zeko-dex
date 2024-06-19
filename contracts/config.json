@@ -5,8 +5,8 @@
       "networkId": "zeko",
       "url": "https://devnet.zeko.io/graphql",
       "keyPath": "keys/pool-manager.json",
-      "feepayerKeyPath": "C:\\Users\\EddyB/.cache/zkapp-cli/keys/eke2nzh8rnlvxnkp8j3vuenyd2u3hnyhxz4cwes6yxacsjnkuco8.json",
-      "feepayerAlias": "eke2nzh8rnlvxnkp8j3vuenyd2u3hnyhxz4cwes6yxacsjnkuco8",
+      "feepayerKeyPath": "C:\\Users\\EddyB/.cache/zkapp-cli/keys/B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1.json",
+      "feepayerAlias": "B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1",
       "fee": "1",
       "smartContract": "PoolManager"
     }
