@@ -165,6 +165,15 @@ describe('Add', () => {
     console.log("balance 1", balanceToken1.toString());
     expect(balanceToken1.greaterThanOrEqual(amtOutMin)).toEqual(Bool(true));
 
+
+    // too much account update
+    const txn7 = await Mina.transaction(deployerAccount, async () => {
+      const amount = await zkApp.swapExactTransferIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
+    });
+    console.log(txn7.toPretty());
+    await txn7.prove();
+    await expect(txn7.sign([deployerKey]).send()).rejects.toThrow();
+
   });
 
   async function mintToken() {

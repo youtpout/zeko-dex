@@ -312,6 +312,69 @@ export class PoolManager extends TokenContract {
         return amountOut;
     }
 
+
+    @method.returns(UInt64)
+    async swapExactTransferIn(_tokenIn: PublicKey, _tokenOut: PublicKey, _amountIn: UInt64, _amountOutMin: UInt64) {
+        _amountIn.assertGreaterThan(UInt64.zero, "Insufficient amount in");
+
+        // todo safety verification
+        let pair = orderToken(_tokenIn, _tokenOut);
+        let hashPair = pair.hash();
+
+        let senderPublicKey = this.sender.getAndRequireSignature();
+
+        let poolState = await offchainState.fields.poolsState.get(hashPair);
+        let poolStateValue = poolState.orElse(PoolState.empty());
+        poolStateValue.hashPair().assertEquals(hashPair, "Pair not created");
+        poolStateValue.init.assertEquals(Bool(true), "This pair is not inited");
+
+        let reserveIn = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0, poolStateValue.reserve1);
+        let reserveOut = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve1, poolStateValue.reserve0);
+
+        reserveIn.assertGreaterThan(_amountIn, "Insufficient reserve in");
+        reserveOut.assertGreaterThan(_amountOutMin, "Insufficient reserve out");
+
+
+        // 0.5 % tax, use value to convert Uint64 to field to prevent from uint64 overflow
+        let amountInWithFee = _amountIn.value.mul(995);
+        let numerator = amountInWithFee.mul(reserveOut.value);
+        let denominator = reserveIn.value.mul(1000).add(amountInWithFee);
+
+        let amountOutField = Provable.witness(Field, () => {
+            let amountBigInt = Field.toValue(numerator) / Field.toValue(denominator);
+            return Field(amountBigInt);
+        });
+        amountOutField.assertLessThanOrEqual(UInt64.MAXINT().value, "Amount out too big");
+
+        // check if the operation is correct  num - 1 <= numCalc <= num + 1
+        amountOutField.add(1).mul(denominator).assertGreaterThanOrEqual(numerator, "Incorrect operation result");
+        amountOutField.sub(1).mul(denominator).assertLessThanOrEqual(numerator, "Incorrect operation result");
+
+        let amountOut = UInt64.Unsafe.fromField(amountOutField);
+        amountOut.assertGreaterThanOrEqual(_amountOutMin, "Insufficient amout out");
+
+        let simpleTokenIn = new SimpleToken(_tokenIn);
+        let simpleTokenOut = new SimpleToken(_tokenOut);
+
+        // transfer from user to pool
+        await simpleTokenIn.transfer(senderPublicKey, this.address, _amountIn);
+        // transfer from pool to user, the already transfer to the pool before
+        let dexOut = new SimpleToken(this.address, simpleTokenOut.deriveTokenId());
+        await dexOut.transferAway(amountOut);
+        await simpleTokenOut.transfer(dexOut.self, senderPublicKey, amountOut);
+
+        // update reserve
+        poolStateValue.reserve0 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve0.add(_amountIn), poolStateValue.reserve0.sub(amountOut));
+        poolStateValue.reserve1 = Provable.if(pair.token0.equals(_tokenIn), poolStateValue.reserve1.sub(amountOut), poolStateValue.reserve1.add(_amountIn));
+
+        offchainState.fields.poolsState.update(hashPair, {
+            from: poolState,
+            to: poolStateValue
+        });
+
+        return amountOut;
+    }
+
     @method.returns(PoolState)
     async getPoolState(token0: PublicKey, token1: PublicKey) {
         const hashPair = hashPairFunction(token0, token1);
