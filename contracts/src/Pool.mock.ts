@@ -1,7 +1,7 @@
 import { Field, Permissions, SmartContract, state, State, method, Struct, UInt64, PublicKey, Bool, Circuit, Provable, TokenContract, AccountUpdate, AccountUpdateForest, Reducer } from 'o1js';
 import { Prover } from 'o1js/dist/node/lib/proof-system/zkprogram';
 import { add } from 'o1js/dist/node/lib/provable/gadgets/native-curve';
-import { Pool, PoolState, SimpleToken } from './Pool';
+import { Pool, PoolState } from './Pool';
 
 
 /**

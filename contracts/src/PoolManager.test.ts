@@ -1,6 +1,7 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import { PoolManager, MINIMUN_LIQUIDITY, offchainState, hashPairFunction } from './PoolManager';
-import { DexTokenHolder, SimpleToken } from './SimpleToken';
+import { SimpleToken } from './SimpleToken';
+import { DexTokenHolder } from './DexTokenHolder';
 
 
 /*

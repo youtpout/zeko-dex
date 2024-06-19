@@ -1,6 +1,7 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import { Factory, Pair } from './Factory';
-import { Pool, SimpleToken, minimunLiquidity, offchainState } from './Pool';
+import { Pool, minimunLiquidity, offchainState } from './Pool';
+import { SimpleToken } from './SimpleToken';
 
 
 /*
