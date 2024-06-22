@@ -25,7 +25,7 @@ Usage:
 node build/src/deploy.js
 `);
 Error.stackTraceLimit = 1000;
-const DEFAULT_NETWORK_ID = 'zeko';
+const DEFAULT_NETWORK_ID = 'testnet';
 
 // parse config and private key from file
 type Config = {
@@ -101,9 +101,9 @@ try {
     let tx = await Mina.transaction(
         { sender: feepayerAddress, fee },
         async () => {
-            AccountUpdate.fundNewAccount(feepayerAddress, 1);
-            //await zkApp.deploy();
-            //await zkToken0.deploy();
+            AccountUpdate.fundNewAccount(feepayerAddress, 3);
+            await zkApp.deploy();
+            await zkToken0.deploy();
             await zkToken1.deploy();
         }
     );

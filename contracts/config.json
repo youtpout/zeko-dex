@@ -2,12 +2,12 @@
   "version": 1,
   "deployAliases": {
     "pool-manager": {
-      "networkId": "zeko",
-      "url": "https://devnet.zeko.io/graphql",
+      "networkId": "testnet",
+      "url": "https://mina-devnet-graphql.aurowallet.com/graphql",
       "keyPath": "keys/pool-manager.json",
       "feepayerKeyPath": "C:\\Users\\EddyB/.cache/zkapp-cli/keys/B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1.json",
       "feepayerAlias": "B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1",
-      "fee": "1",
+      "fee": "0.1",
       "smartContract": "PoolManager"
     }
   }
