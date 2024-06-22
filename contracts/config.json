@@ -3,11 +3,11 @@
   "deployAliases": {
     "pool-manager": {
       "networkId": "testnet",
-      "url": "https://mina-devnet-graphql.aurowallet.com/graphql",
+      "url": "https://api.minascan.io/node/devnet/v1/graphql",
       "keyPath": "keys/pool-manager.json",
       "feepayerKeyPath": "C:\\Users\\EddyB/.cache/zkapp-cli/keys/B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1.json",
       "feepayerAlias": "B62qk7R5wo6WTwYSpBHPtfikGvkuasJGEv4ZsSA2sigJdqJqYsWUzA1",
-      "fee": "0.1",
+      "fee": "1",
       "smartContract": "PoolManager"
     }
   }

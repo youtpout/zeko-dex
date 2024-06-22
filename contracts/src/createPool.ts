@@ -96,30 +96,6 @@ await DexTokenHolder.compile();
 await PoolManager.compile();
 
 try {
-    // call update() and send transaction
-    // console.log('build transaction and create proof...');
-    // console.log("token 1", zkToken1.address.toBase58());
-    // let tx = await Mina.transaction(
-    //     { sender: feepayerAddress, fee },
-    //     async () => {
-    //         AccountUpdate.fundNewAccount(feepayerAddress, 2);
-    //         await dexTokenHolder0.deploy();
-    //         await dexTokenHolder1.deploy();
-
-    //     }
-    // );
-    // await tx.prove();
-
-    // console.log('send transaction...');
-    // const sentTx = await tx.sign([feepayerKey, zkAppKey]).send();
-    // if (sentTx.status === 'pending') {
-    //     console.log(
-    //         '\nSuccess! Update transaction sent.\n' +
-    //         '\nYour smart contract state will be updated' +
-    //         '\nas soon as the transaction is included in a block:' +
-    //         `\n${getTxnUrl(config.url, sentTx.hash)}`
-    //     );
-    // }
 
     let newAddress = await createPool(zkToken0Address, zkToken1Address);
     let hashPair = await hashPairFunction(zkToken0Address, zkToken1Address);
