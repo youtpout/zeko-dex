@@ -13,8 +13,9 @@
  * Run with node:     `$ node build/src/deploy.js`.
  */
 import fs from 'fs/promises';
-import { AccountUpdate, Mina, NetworkId, PrivateKey } from 'o1js';
+import { AccountUpdate, Field, Mina, NetworkId, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from './index.js';
+import { hashPairFunction } from './PoolManager.js';
 
 // check command line arg
 let deployAlias = "pool-manager";
@@ -22,7 +23,7 @@ if (!deployAlias)
     throw Error(`Missing <deployAlias> argument.
 
 Usage:
-node build/src/deploy.js
+node build/src/addLiquidity.js
 `);
 Error.stackTraceLimit = 1000;
 const DEFAULT_NETWORK_ID = 'zeko';
@@ -96,32 +97,81 @@ await PoolManager.compile();
 
 try {
     // call update() and send transaction
-    console.log('build transaction and create proof...');
-    console.log("token 1", zkToken1.address.toBase58());
-    let tx = await Mina.transaction(
-        { sender: feepayerAddress, fee },
-        async () => {
-            AccountUpdate.fundNewAccount(feepayerAddress, 1);
-            //await zkApp.deploy();
-            //await zkToken0.deploy();
-            await zkToken1.deploy();
-        }
-    );
-    await tx.prove();
+    // console.log('build transaction and create proof...');
+    // console.log("token 1", zkToken1.address.toBase58());
+    // let tx = await Mina.transaction(
+    //     { sender: feepayerAddress, fee },
+    //     async () => {
+    //         AccountUpdate.fundNewAccount(feepayerAddress, 2);
+    //         await dexTokenHolder0.deploy();
+    //         await dexTokenHolder1.deploy();
 
-    console.log('send transaction...');
-    const sentTx = await tx.sign([feepayerKey, zkAppKey, zkToken0PrivateKey, zkToken1PrivateKey]).send();
-    if (sentTx.status === 'pending') {
-        console.log(
-            '\nSuccess! Update transaction sent.\n' +
-            '\nYour smart contract state will be updated' +
-            '\nas soon as the transaction is included in a block:' +
-            `\n${getTxnUrl(config.url, sentTx.hash)}`
-        );
-    }
+    //     }
+    // );
+    // await tx.prove();
+
+    // console.log('send transaction...');
+    // const sentTx = await tx.sign([feepayerKey, zkAppKey]).send();
+    // if (sentTx.status === 'pending') {
+    //     console.log(
+    //         '\nSuccess! Update transaction sent.\n' +
+    //         '\nYour smart contract state will be updated' +
+    //         '\nas soon as the transaction is included in a block:' +
+    //         `\n${getTxnUrl(config.url, sentTx.hash)}`
+    //     );
+    // }
+
+    let newAddress = await createPool(zkToken0Address, zkToken1Address);
+    let hashPair = await hashPairFunction(zkToken0Address, zkToken1Address);
+
+    expect(newAddress).toEqual(hashPair);
+
+    let proof = await offchainState.createSettlementProof();
+    const txn = await Mina.transaction(feepayerAddress, async () => {
+        await zkApp.settle(proof);
+    });
+    await txn.prove();
+    await txn.sign([feepayerKey]).send();
+
+    await mintToken();
+
+
 } catch (err) {
     console.log(err);
 }
+
+async function createPool(token0: PublicKey, token1: PublicKey): Promise<Field> {
+
+    const newAccount = PrivateKey.random();
+    let newAddress = Field(0);
+    // register pool
+    const txn0 = await Mina.transaction(feepayerAddress, async () => {
+        AccountUpdate.fundNewAccount(feepayerAddress, 1);
+        newAddress = await zkApp.createPool(newAccount.toPublicKey(), token0, token1);
+    });
+    await txn0.prove();
+    await txn0.sign([feepayerKey, newAccount]).send();
+
+    return newAddress;
+}
+
+async function mintToken() {
+    // update transaction
+    const txn = await Mina.transaction(feepayerAddress, async () => {
+        AccountUpdate.fundNewAccount(feepayerAddress, 1);
+        await zkToken0.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn.prove();
+    await txn.sign([feepayerKey, zkToken0PrivateKey]).send();
+
+    const txn2 = await Mina.transaction(feepayerAddress, async () => {
+        AccountUpdate.fundNewAccount(feepayerAddress, 1);
+        await zkToken1.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn2.prove();
+    await txn2.sign([feepayerKey, zkToken1PrivateKey]).send();
+}
+
 
 function getTxnUrl(graphQlUrl: string, txnHash: string | undefined) {
     const hostName = new URL(graphQlUrl).hostname;
