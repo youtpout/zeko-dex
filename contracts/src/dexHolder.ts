@@ -98,7 +98,8 @@ await PoolManager.compile();
 try {
     // call update() and send transaction
     console.log('build transaction and create proof...');
-    console.log("token 1", zkToken1.address.toBase58());
+    console.log("dexTokenHolder0", dexTokenHolder0.address.toBase58());
+    console.log("dexTokenHolder1", dexTokenHolder1.address.toBase58());
     let tx = await Mina.transaction(
         { sender: feepayerAddress, fee },
         async () => {

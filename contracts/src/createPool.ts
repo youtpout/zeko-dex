@@ -70,6 +70,7 @@ const Network = Mina.Network({
     // This is to ensure the backward compatibility.
     networkId: (config.networkId ?? DEFAULT_NETWORK_ID) as NetworkId,
     mina: config.url,
+    archive: "https://api.minascan.io/archive/devnet/v1/graphql"
 });
 console.log("network", config.url);
 // const Network = Mina.Network(config.url);
