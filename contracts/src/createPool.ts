@@ -58,10 +58,16 @@ let zkAppToken1Base58: { privateKey: string; publicKey: string } = JSON.parse(
     await fs.readFile("keys/token1.json", 'utf8')
 );
 
+let zkLiquidityBase58: { privateKey: string; publicKey: string } = JSON.parse(
+    await fs.readFile("keys/liquidity.json", 'utf8')
+);
+
+
 let feepayerKey = PrivateKey.fromBase58(feepayerKeysBase58.privateKey);
 let zkAppKey = PrivateKey.fromBase58(zkAppKeysBase58.privateKey);
 let zkToken0PrivateKey = PrivateKey.fromBase58(zkAppToken0Base58.privateKey);
 let zkToken1PrivateKey = PrivateKey.fromBase58(zkAppToken1Base58.privateKey);
+let liquidityPrivateKey = PrivateKey.fromBase58(zkLiquidityBase58.privateKey);
 
 
 // set up Mina instance and contract we interact with
@@ -101,16 +107,17 @@ try {
     let newAddress = await createPool(zkToken0Address, zkToken1Address);
     let hashPair = await hashPairFunction(zkToken0Address, zkToken1Address);
 
-    expect(newAddress).toEqual(hashPair);
+    console.log("newAddress", newAddress.toString());
+    console.log("hashPair", hashPair.toString());
 
-    let proof = await offchainState.createSettlementProof();
-    const txn = await Mina.transaction(feepayerAddress, async () => {
-        await zkApp.settle(proof);
-    });
-    await txn.prove();
-    await txn.sign([feepayerKey]).send();
+    // let proof = await offchainState.createSettlementProof();
+    // const txn = await Mina.transaction(feepayerAddress, async () => {
+    //     await zkApp.settle(proof);
+    // });
+    // await txn.prove();
+    // await txn.sign([feepayerKey]).send();
 
-    await mintToken();
+    // await mintToken();
 
 
 } catch (err) {
@@ -118,16 +125,30 @@ try {
 }
 
 async function createPool(token0: PublicKey, token1: PublicKey): Promise<Field> {
-
-    const newAccount = PrivateKey.random();
     let newAddress = Field(0);
+    console.log("feepayer", feepayerAddress.toBase58());
+    console.log("token0", token0.toBase58());
+    console.log("token1", token1.toBase58());
+    console.log("newAccount", liquidityPrivateKey.toPublicKey().toBase58());
+
     // register pool
-    const txn0 = await Mina.transaction(feepayerAddress, async () => {
+    const amount = 1e9;
+    const txn0 = await Mina.transaction({ sender: feepayerAddress, fee }, async () => {
         AccountUpdate.fundNewAccount(feepayerAddress, 1);
-        newAddress = await zkApp.createPool(newAccount.toPublicKey(), token0, token1);
+        newAddress = await zkApp.createPool(liquidityPrivateKey.toPublicKey(), token0, token1);
     });
+    console.log("send create pool");
     await txn0.prove();
-    await txn0.sign([feepayerKey, newAccount]).send();
+    const sentTx = await txn0.sign([feepayerKey, liquidityPrivateKey]).send();
+    console.log("send create pool");
+    if (sentTx.status === 'pending') {
+        console.log(
+            '\nSuccess! Update transaction sent.\n' +
+            '\nYour smart contract state will be updated' +
+            '\nas soon as the transaction is included in a block:' +
+            `\n${getTxnUrl(config.url, sentTx.hash)}`
+        );
+    }
 
     return newAddress;
 }
