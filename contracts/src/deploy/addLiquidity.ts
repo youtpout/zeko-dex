@@ -107,7 +107,7 @@ try {
 
     let amt = UInt64.from(10 * 10 ** 9);
     const txn = await Mina.transaction({ sender: feepayerAddress, fee }, async () => {
-        //AccountUpdate.fundNewAccount(feepayerAddress, 1);
+        AccountUpdate.fundNewAccount(feepayerAddress, 2);
         await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
     });
     await txn.prove();
