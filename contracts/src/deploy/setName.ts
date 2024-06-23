@@ -13,8 +13,9 @@
  * Run with node:     `$ node build/src/deploy.js`.
  */
 import fs from 'fs/promises';
-import { AccountUpdate, Mina, NetworkId, PrivateKey } from 'o1js';
-import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from './index.js';
+import { AccountUpdate, Field, Mina, NetworkId, PrivateKey, PublicKey, UInt64 } from 'o1js';
+import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from '../index.js';
+import { hashPairFunction } from '../PoolManager.js';
 
 // check command line arg
 let deployAlias = "pool-manager";
@@ -22,10 +23,10 @@ if (!deployAlias)
     throw Error(`Missing <deployAlias> argument.
 
 Usage:
-node build/src/deploy.js
+node build/src/addLiquidity.js
 `);
 Error.stackTraceLimit = 1000;
-const DEFAULT_NETWORK_ID = 'testnet';
+const DEFAULT_NETWORK_ID = 'zeko';
 
 // parse config and private key from file
 type Config = {
@@ -57,10 +58,16 @@ let zkAppToken1Base58: { privateKey: string; publicKey: string } = JSON.parse(
     await fs.readFile("keys/token1.json", 'utf8')
 );
 
+let zkLiquidityBase58: { privateKey: string; publicKey: string } = JSON.parse(
+    await fs.readFile("keys/liquidity.json", 'utf8')
+);
+
+
 let feepayerKey = PrivateKey.fromBase58(feepayerKeysBase58.privateKey);
 let zkAppKey = PrivateKey.fromBase58(zkAppKeysBase58.privateKey);
 let zkToken0PrivateKey = PrivateKey.fromBase58(zkAppToken0Base58.privateKey);
 let zkToken1PrivateKey = PrivateKey.fromBase58(zkAppToken1Base58.privateKey);
+let liquidityPrivateKey = PrivateKey.fromBase58(zkLiquidityBase58.privateKey);
 
 
 // set up Mina instance and contract we interact with
@@ -69,48 +76,50 @@ const Network = Mina.Network({
     // This is to ensure the backward compatibility.
     networkId: (config.networkId ?? DEFAULT_NETWORK_ID) as NetworkId,
     mina: config.url,
+    archive: "https://api.minascan.io/archive/devnet/v1/graphql"
 });
 console.log("network", config.url);
 // const Network = Mina.Network(config.url);
 const fee = Number(config.fee) * 1e9; // in nanomina (1 billion = 1.0 mina)
 Mina.setActiveInstance(Network);
 let feepayerAddress = feepayerKey.toPublicKey();
-let zkAppAddress = zkAppKey.toPublicKey();
-let zkApp = new PoolManager(zkAppAddress);
 let zkToken0Address = zkToken0PrivateKey.toPublicKey();
 let zkToken0 = new SimpleToken(zkToken0Address);
 let zkToken1Address = zkToken1PrivateKey.toPublicKey();
 let zkToken1 = new SimpleToken(zkToken1Address);
 
-offchainState.setContractInstance(zkApp);
-
-let dexTokenHolder0 = new DexTokenHolder(zkAppAddress, zkToken0.deriveTokenId());
-let dexTokenHolder1 = new DexTokenHolder(zkAppAddress, zkToken1.deriveTokenId());
 
 // compile the contract to create prover keys
 console.log('compile the contract...');
-await offchainState.compile();
 await SimpleToken.compile();
-await DexTokenHolder.compile();
-await PoolManager.compile();
 
 try {
-    // call update() and send transaction
-    console.log('build transaction and create proof...');
-    console.log("token 1", zkToken1.address.toBase58());
-    let tx = await Mina.transaction(
-        { sender: feepayerAddress, fee },
-        async () => {
-            AccountUpdate.fundNewAccount(feepayerAddress, 3);
-            await zkApp.deploy();
-            await zkToken0.deploy();
-            await zkToken1.deploy();
-        }
-    );
-    await tx.prove();
 
-    console.log('send transaction...');
-    const sentTx = await tx.sign([feepayerKey, zkAppKey, zkToken0PrivateKey, zkToken1PrivateKey]).send();
+    await mintToken();
+
+
+} catch (err) {
+    console.log(err);
+}
+
+
+async function mintToken() {
+    // update transaction
+    const txn = await Mina.transaction({ sender: feepayerAddress, fee }, async () => {
+        AccountUpdate.fundNewAccount(feepayerAddress, 2);
+        await zkToken0.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
+        await zkToken1.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
+    });
+    await txn.prove();
+    const sentTx = await txn.sign([feepayerKey, zkToken0PrivateKey, zkToken1PrivateKey]).send();
+
+    // const txn2 = await Mina.transaction(feepayerAddress, async () => {
+    //     AccountUpdate.fundNewAccount(feepayerAddress, 1);
+    //     await zkToken1.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
+    // });
+    // await txn2.prove();
+    // const sentTx = await txn2.sign([feepayerKey, zkToken1PrivateKey]).send();
+
     if (sentTx.status === 'pending') {
         console.log(
             '\nSuccess! Update transaction sent.\n' +
@@ -119,9 +128,8 @@ try {
             `\n${getTxnUrl(config.url, sentTx.hash)}`
         );
     }
-} catch (err) {
-    console.log(err);
 }
+
 
 function getTxnUrl(graphQlUrl: string, txnHash: string | undefined) {
     const hostName = new URL(graphQlUrl).hostname;

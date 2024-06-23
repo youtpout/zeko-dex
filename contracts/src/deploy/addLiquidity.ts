@@ -14,8 +14,8 @@
  */
 import fs from 'fs/promises';
 import { AccountUpdate, Field, Mina, NetworkId, PrivateKey, PublicKey, UInt64 } from 'o1js';
-import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from './index.js';
-import { hashPairFunction } from './PoolManager.js';
+import { SimpleToken, DexTokenHolder, offchainState, PoolManager } from '../index.js';
+import { hashPairFunction } from '../PoolManager.js';
 
 // check command line arg
 let deployAlias = "pool-manager";
@@ -104,43 +104,14 @@ await PoolManager.compile();
 
 try {
 
-    let newAddress = await createPool(zkToken0Address, zkToken1Address);
-    let hashPair = await hashPairFunction(zkToken0Address, zkToken1Address);
 
-    console.log("newAddress", newAddress.toString());
-    console.log("hashPair", hashPair.toString());
-
-    // let proof = await offchainState.createSettlementProof();
-    // const txn = await Mina.transaction(feepayerAddress, async () => {
-    //     await zkApp.settle(proof);
-    // });
-    // await txn.prove();
-    // await txn.sign([feepayerKey]).send();
-
-    // await mintToken();
-
-
-} catch (err) {
-    console.log(err);
-}
-
-async function createPool(token0: PublicKey, token1: PublicKey): Promise<Field> {
-    let newAddress = Field(0);
-    console.log("feepayer", feepayerAddress.toBase58());
-    console.log("token0", token0.toBase58());
-    console.log("token1", token1.toBase58());
-    console.log("newAccount", liquidityPrivateKey.toPublicKey().toBase58());
-
-    // register pool
-    const amount = 1e9;
-    const txn0 = await Mina.transaction({ sender: feepayerAddress, fee }, async () => {
-        AccountUpdate.fundNewAccount(feepayerAddress, 1);
-        newAddress = await zkApp.createPool(liquidityPrivateKey.toPublicKey(), token0, token1);
+    let amt = UInt64.from(10 * 10 ** 9);
+    const txn = await Mina.transaction({ sender: feepayerAddress, fee }, async () => {
+        //AccountUpdate.fundNewAccount(feepayerAddress, 1);
+        await zkApp.supplyLiquidity(zkToken0Address, zkToken1Address, amt, amt);
     });
-    console.log("send create pool");
-    await txn0.prove();
-    const sentTx = await txn0.sign([feepayerKey, liquidityPrivateKey]).send();
-    console.log("send create pool");
+    await txn.prove();
+    const sentTx = await txn.sign([feepayerKey]).send();
     if (sentTx.status === 'pending') {
         console.log(
             '\nSuccess! Update transaction sent.\n' +
@@ -150,24 +121,8 @@ async function createPool(token0: PublicKey, token1: PublicKey): Promise<Field> 
         );
     }
 
-    return newAddress;
-}
-
-async function mintToken() {
-    // update transaction
-    const txn = await Mina.transaction(feepayerAddress, async () => {
-        AccountUpdate.fundNewAccount(feepayerAddress, 1);
-        await zkToken0.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
-    });
-    await txn.prove();
-    await txn.sign([feepayerKey, zkToken0PrivateKey]).send();
-
-    const txn2 = await Mina.transaction(feepayerAddress, async () => {
-        AccountUpdate.fundNewAccount(feepayerAddress, 1);
-        await zkToken1.mintTo(feepayerAddress, UInt64.from(1000 * 10 ** 9));
-    });
-    await txn2.prove();
-    await txn2.sign([feepayerKey, zkToken1PrivateKey]).send();
+} catch (err) {
+    console.log(err);
 }
 
 
