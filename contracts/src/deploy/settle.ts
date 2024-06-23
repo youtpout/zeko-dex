@@ -77,8 +77,6 @@ offchainState.setContractInstance(zkApp);
 // compile the contract to create prover keys
 console.log('compile the contract...');
 await offchainState.compile();
-await SimpleToken.compile();
-await DexTokenHolder.compile();
 await PoolManager.compile();
 
 try {
