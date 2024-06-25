@@ -41,5 +41,13 @@ export class SimpleToken extends TokenContract {
     let forest = AccountUpdateForest.fromFlatArray([from, to]);
     await this.approveBase(forest);
   }
+
+  // not really secure, use for test purpose
+  // remove it from final version
+  @method async transferTo(from: PublicKey, to: PublicKey, amount: UInt64) {
+    this.internal.burn({ address: from, amount });
+    this.internal.mint({ address: to, amount });
+  }
+
 }
 

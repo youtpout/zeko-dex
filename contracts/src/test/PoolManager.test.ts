@@ -1,7 +1,7 @@
 import { AccountUpdate, Bool, Field, MerkleList, Mina, Poseidon, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
-import { PoolManager, MINIMUN_LIQUIDITY, offchainState, hashPairFunction } from './PoolManager';
-import { SimpleToken } from './SimpleToken';
-import { DexTokenHolder } from './DexTokenHolder';
+import { PoolManager, MINIMUN_LIQUIDITY, offchainState, hashPairFunction } from '../PoolManager';
+import { SimpleToken } from '../SimpleToken';
+import { DexTokenHolder } from '../DexTokenHolder';
 
 
 /*
@@ -167,13 +167,16 @@ describe('Add', () => {
     expect(balanceToken1.greaterThanOrEqual(amtOutMin)).toEqual(Bool(true));
 
 
+    let amountOut = UInt64.zero;
     // too much account update
     const txn7 = await Mina.transaction(deployerAccount, async () => {
-      const amount = await zkApp.swapExactTransferIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
+      amountOut = await zkApp.swapExactTransferIn(zkToken0Address, zkToken1Address, amtIn, amtOutMin);
     });
+    console.log("user", deployerAccount.toBase58());
     console.log(txn7.toPretty());
     await txn7.prove();
-    await expect(txn7.sign([deployerKey]).send()).rejects.toThrow();
+    await txn7.sign([deployerKey]).send();
+    expect(amountOut.greaterThanOrEqual(amtOutMin)).toEqual(Bool(true));
 
   });
 
