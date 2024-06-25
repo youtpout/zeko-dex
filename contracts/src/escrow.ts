@@ -40,6 +40,18 @@ class TokenEscrow extends SmartContract {
     }
 
     /**
+     * Anyone can windraw for admin.
+     */
+    @method async withdrawAnyone(amount: UInt64) {
+        // withdraw the amount
+        let receiverAU = this.send({ to: admin, amount });
+
+        // let the receiver update inherit token permissions from this contract
+        // TODO: .send() should do this automatically
+        receiverAU.body.mayUseToken = AccountUpdate.MayUseToken.InheritFromParent;
+    }
+
+    /**
      * Optimized version of `withdraw()` which reuses the account update where we require the `sender` signature
      */
     @method async withdrawOptimized(amount: UInt64) {
@@ -115,7 +127,7 @@ await Mina.transaction(tokenAccount, async () => {
 // withdraw from escrow (creates 4 account updates)
 
 let tx1 = await Mina.transaction(admin, async () => {
-    await escrow.withdraw(UInt64.from(500));
+    await escrow.withdraw(UInt64.from(300));
 
     // token-approve the withdrawal
     await token.approveAccountUpdate(escrow.self);
@@ -128,7 +140,7 @@ await tx1.send();
 // withdraw from escrow (optimized, creates only 3 account updates)
 
 let tx2 = await Mina.transaction(admin, async () => {
-    await escrow.withdrawOptimized(UInt64.from(500));
+    await escrow.withdrawOptimized(UInt64.from(300));
 
     // token-approve the withdrawal
     await token.approveAccountUpdate(escrow.self);
@@ -137,3 +149,14 @@ let tx2 = await Mina.transaction(admin, async () => {
     .prove();
 //console.log('escrow withdraw tx (optimized)', tx2.toPretty());
 await tx2.send();
+
+let tx3 = await Mina.transaction(sender, async () => {
+    await escrow.withdrawAnyone(UInt64.from(300));
+
+    // token-approve the withdrawal
+    await token.approveAccountUpdate(escrow.self);
+})
+    .sign([sender.key])
+    .prove();
+//console.log('escrow withdraw tx (optimized)', tx2.toPretty());
+await tx3.send();
