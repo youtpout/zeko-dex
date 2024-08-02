@@ -3,7 +3,7 @@ import { Factory } from '../Factory';
 import { Pool, minimunLiquidity, offchainState } from '../Pool';
 import { SimpleToken } from '../SimpleToken';
 
-let proofsEnabled = false;
+let proofsEnabled = true;
 
 describe('Pool', () => {
     let deployerAccount: Mina.TestPublicKey,

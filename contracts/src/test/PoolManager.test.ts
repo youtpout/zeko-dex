@@ -11,7 +11,7 @@ import { DexTokenHolder } from '../DexTokenHolder';
  * See https://docs.minaprotocol.com/zkapps for more info.
  */
 
-let proofsEnabled = false;
+let proofsEnabled = true;
 
 describe('Add', () => {
   let deployerAccount: Mina.TestPublicKey,
@@ -30,10 +30,18 @@ describe('Add', () => {
     dexTokenHolder1: DexTokenHolder;
 
   beforeAll(async () => {
+
+
+    zkAppPrivateKey = PrivateKey.random();
+    zkAppAddress = zkAppPrivateKey.toPublicKey();
+    zkApp = new PoolManager(zkAppAddress);
+
+    offchainState.setContractInstance(zkApp);
     if (proofsEnabled) {
       await offchainState.compile();
       await SimpleToken.compile();
       await PoolManager.compile();
+      await DexTokenHolder.compile()
     }
   });
 
@@ -44,14 +52,9 @@ describe('Add', () => {
     deployerKey = deployerAccount.key;
     senderKey = senderAccount.key;
 
-    zkAppPrivateKey = PrivateKey.random();
-    zkAppAddress = zkAppPrivateKey.toPublicKey();
-    zkApp = new PoolManager(zkAppAddress);
-
     let keyTokenX = PrivateKey.random();
     let keyTokenY = PrivateKey.random();
 
-    offchainState.setContractInstance(zkApp);
 
     // order token to create pool
     let xIsLower = keyTokenX.toPublicKey().x.lessThan(keyTokenY.toPublicKey().x);
